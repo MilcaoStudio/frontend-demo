@@ -1,0 +1,19 @@
+:root {
+    --borderRadius: 3px;
+    --borderRadiusUser: 16px;
+    --padding-s: 6px;
+    --padding-m: 8px;
+    --padding-l: 12px;
+    --padding-xl: 16px;
+
+    --bgMain: #121318;
+    --bgSecondary: #292A2F;
+    --bgHighlight: #1B1B21;
+    --textMain: #B8C3FF;
+    --textDim: #888AA4;
+    --colorPrimary: #404F92;
+}
+
+body {
+    margin: 0;
+}
