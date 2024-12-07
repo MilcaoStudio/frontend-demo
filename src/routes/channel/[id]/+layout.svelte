@@ -7,6 +7,7 @@
     import { voiceState } from "$lib/voice/VoiceState";
     import { onMount, setContext } from "svelte";
     import { ulid } from "ulid";
+    import ModalRenderer from "$lib/components/modal/ModalRenderer.svelte";
 
     let userId = ulid();
     let user = User.create({id: userId, username: "chileball", display_name: "Chileball"});
@@ -29,6 +30,7 @@
     <slot />
     <MemberList />
 </div>
+<ModalRenderer />
 
 <style>
     .main {
