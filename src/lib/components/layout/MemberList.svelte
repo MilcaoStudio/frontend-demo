@@ -7,7 +7,7 @@
         display: flex;
         flex-direction: column;
         margin: 8px;
-        width: 250px;
+        width: 200px;
         border-radius: var(--borderRadius);
     }
 </style>

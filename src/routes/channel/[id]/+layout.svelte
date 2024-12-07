@@ -10,8 +10,8 @@
     import ModalRenderer from "$lib/components/modal/ModalRenderer.svelte";
 
     let userId = ulid();
-    let user = User.create({id: userId, username: "chileball", display_name: "Chileball"});
-    user.updateStatus({mode: StatusMode.DND, text: "Playing Metro Exodus"});
+    let user = User.create({id: userId, username: userId, display_name: userId});
+    user.updateStatus({mode: StatusMode.ONLINE, text: "Playing Metro Exodus"});
     users.set(userId, user);
     setContext("user", user);
     onMount(() => {
@@ -42,7 +42,7 @@
     }
 
     .leftSidebar {
-        width: 300px;
+        width: 350px;
         display: flex;
         flex-direction: column;
         padding: 8px;
