@@ -1,11 +1,11 @@
-FROM oven/bun:latest as base
+FROM oven/bun:latest AS base
 WORKDIR /usr/app
 
-# requires previous bun install
+# bun install
 FROM base AS install
 RUN mkdir -p /temp/dev
-COPY package.json bun.lockb /temp/dev/
-RUN cd /temp/dev && bun install --frozen-lockfile
+COPY package.json /temp/dev/
+RUN cd /temp/dev && bun install
 
 # copy node_modules from temp directory
 # then copy all (non-ignored) project files into the image

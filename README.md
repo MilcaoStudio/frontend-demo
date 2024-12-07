@@ -21,4 +21,16 @@ To create a production version of your app:
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+## Creating a Docker image
+
+Build the Docker image:
+
+```bash
+docker buildx b -t frontend .
+```
+
+You can then run the Docker image with:
+
+```bash
+docker run -e PUBLIC_VOSO_URL -p 3000:3000 frontend
+```

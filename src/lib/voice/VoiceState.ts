@@ -3,7 +3,7 @@ import { LocalStream, type RemoteStream } from "./Stream";
 import type { MediaType, VoiceUser } from "./Voice";
 import type VoiceClient from "./VoiceClient";
 import { SvelteMap } from "svelte/reactivity";
-import { PUBLIC_VOSO_URL } from "$env/static/public";
+import { env } from "$env/dynamic/public";
 
 export enum VoiceStatus {
     // Default state, no connections
@@ -89,7 +89,7 @@ class VoiceState {
         this.status.set(VoiceStatus.CONNECTING);
 
         try {
-            await this.client.connect(PUBLIC_VOSO_URL ?? "ws://localhost:4000", token);
+            await this.client.connect(env.PUBLIC_VOSO_URL ?? "ws://localhost:4000", token);
             this.status.set(VoiceStatus.READY);
             this.syncState();
         } catch (err) {
