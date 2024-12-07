@@ -1,6 +1,7 @@
 // place files you want to import through the `$lib` alias in this folder.
 import { SvelteMap } from "svelte/reactivity"
 import type { User } from "uprising.js";
+import AppState from "./persistent/AppState";
 
 export interface Channel {
     id: string
@@ -32,3 +33,4 @@ export class Server {
 export const users: Map<string, User> = new SvelteMap;
 export const server = new Server("01HRSZB6J5PW9D2XGBZVZAKGFA");
 export const lastChannel = "01JB56QAJR6T3ZP14HVCE52KVN";
+export const state = new AppState;

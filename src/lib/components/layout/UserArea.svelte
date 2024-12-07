@@ -8,6 +8,7 @@
     import MicAction from "../actions/MicAction.svelte";
     import OutputAction from "../actions/OutputAction.svelte";
     import EndCallAction from "../actions/EndCallAction.svelte";
+    import Clickable from "../Clickable.svelte";
 
     let { user }: { user: User } = $props();
     let voiceStatus = voiceState.status;
@@ -33,7 +34,10 @@
     <div class="userInfo">
         <Avatar size={40} target={user} />
         <div>
-            <Username {user} />
+            <Clickable onclick={() => {
+                console.log("Clicked!");}}>
+                <Username {user} />
+            </Clickable>
             <P4 class="status">{user.status.text}</P4>
         </div>
     </div>
