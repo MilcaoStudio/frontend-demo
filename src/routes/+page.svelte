@@ -1,7 +1,8 @@
 <script>
     import { goto } from "$app/navigation";
     import { lastChannel } from "$lib";
-    $effect(()=>{goto(`/channel/${lastChannel}`)})
+    import { base } from "$app/paths";
+    $effect(()=>{goto(`${base}/channel/${lastChannel}`)})
 </script>
 
 Rendering...

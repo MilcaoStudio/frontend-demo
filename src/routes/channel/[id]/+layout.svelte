@@ -8,10 +8,10 @@
     import { onMount, setContext } from "svelte";
     import { ulid } from "ulid";
     import ModalRenderer from "$lib/components/modal/ModalRenderer.svelte";
+    import { base } from "$app/paths";
 
     let userId = ulid();
-    let user = User.create({id: userId, username: userId, display_name: userId});
-    user.updateStatus({mode: StatusMode.ONLINE, text: "Playing Metro Exodus"});
+    let user = User.create({id: userId, avatar: `${base}/avatars/1.png`, username: userId, display_name: userId, status: {mode: StatusMode.ONLINE, text: "Playing Metro Exodus"}});
     users.set(userId, user);
     setContext("user", user);
     onMount(() => {

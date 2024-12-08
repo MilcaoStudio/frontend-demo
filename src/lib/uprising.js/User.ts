@@ -14,15 +14,15 @@ export class User {
         this._status = data.status;
     }
 
-    static create(data: {id: string, username: string, display_name?: string}){
+    static create(data: {id: string, avatar?: string, username: string, display_name?: string|null, status?: Partial<UserStatus>}) {
         return new User({
             id: data.id,
-            avatar: "1.png",
+            avatar: data.avatar ?? null,
             username: data.username,
             display_name: data.display_name ?? null,
             status: {
-                mode: StatusMode.OFFLINE,
-                text: null
+                mode: data.status?.mode || StatusMode.OFFLINE,
+                text: data.status?.text ?? null,
             },
         });
     }

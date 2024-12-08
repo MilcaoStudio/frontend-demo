@@ -4,6 +4,7 @@
     import { ChannelButton } from "vermeer-ui";
     import ChannelInner from "../channel/ChannelInner.svelte";
     import ChannelIcon from "../channel/ChannelIcon.svelte";
+    import { base } from "$app/paths";
     let { server }: { server: Server } = $props();
     let channels = $state(server.channels ?? []);
     let selected = $state(channels[0].id);
@@ -16,7 +17,7 @@
             variant={selected == channel.id ? "active" : "default"}
             onclick={() => {
                 selected = channel.id;
-                goto(`/channel/${channel.id}`);
+                goto(`${base}/channel/${channel.id}`);
             }}
             ><svelte:fragment slot="icon">
                 <ChannelIcon {channel} />
