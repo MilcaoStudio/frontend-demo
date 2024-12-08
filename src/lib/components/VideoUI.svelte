@@ -30,6 +30,7 @@
         {/if}
     </div>
 
+    <!-- TODO: View remote streams -->
     <div class="actions">
         <MicAction size={32} />
         <VideoAction size={32} />
