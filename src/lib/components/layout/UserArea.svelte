@@ -15,27 +15,31 @@
 </script>
 
 <div class="userArea">
-    {#if $voiceStatus > VoiceStatus.RTC_CONNECTING}
-        <div class="userControl">
-            <div class="RTCInfo"></div>
-            <div class="RTCControls">
-                <div>
-                    <VideoAction size={20} />
-                </div>
-                <div>
-                    <MicAction size={20} />
-                    <OutputAction size={20} />
-                    <EndCallAction />
-                </div>
+    <div class="userControl">
+        {#if $voiceStatus > VoiceStatus.RTC_CONNECTING}
+            <div class="RTCInfo">
+                <EndCallAction />
+            </div>
+        {/if}
+        <div class="RTCControls">
+            <div>
+                <VideoAction size={20} />
+            </div>
+            <div>
+                <MicAction size={20} />
+                <OutputAction size={20} />
             </div>
         </div>
-    {/if}
+    </div>
 
     <div class="userInfo">
         <Avatar size={40} target={user} />
         <div>
-            <Clickable onclick={() => {
-                console.log("Clicked!");}}>
+            <Clickable
+                onclick={() => {
+                    console.log("Clicked!");
+                }}
+            >
                 <Username {user} />
             </Clickable>
             <P4 class="status">{user.status.text}</P4>

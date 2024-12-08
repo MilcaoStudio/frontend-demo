@@ -251,17 +251,21 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
         await this.handleAnswer(answer.description);
     }
 
-    disconnect(error?: VoiceError, ignoreDisconnected?: boolean) {
-        if (!this.signaling.connected() && !ignoreDisconnected) return;
-        this.signaling.disconnect();
+    leave() {
+        if (!this.signaling.connected()) return;
+        this.signaling.leave();
         this.participants.clear();
-        this.userId = undefined;
         this.roomId = undefined;
         if (this.transports) {
             Object.values(this.transports).forEach((t) => t.pc.close());
             this.transports = undefined;
         }
+    }
 
+    disconnect(error?: VoiceError, ignoreDisconnected?: boolean) {
+        if (!this.signaling.connected() && !ignoreDisconnected) return;
+        this.leave();
+        this.userId = undefined;
         this.emit("close", error);
     }
 

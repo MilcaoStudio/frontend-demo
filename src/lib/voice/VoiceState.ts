@@ -1,6 +1,6 @@
 import { fromStore, get, writable, type Writable } from "svelte/store";
 import { LocalStream, type RemoteStream } from "./Stream";
-import type { MediaType, VoiceUser } from "./Voice";
+import type { VoiceUser } from "./Voice";
 import type VoiceClient from "./VoiceClient";
 import { SvelteMap } from "svelte/reactivity";
 import { env } from "$env/dynamic/public";
@@ -28,9 +28,10 @@ class VoiceState {
     client?: VoiceClient;
     connecting?: boolean;
 
-    audio: Writable<boolean> = writable(true);
+    audio: Writable<boolean> = writable(false);
     video: Writable<boolean> = writable(false);
     screencast: Writable<boolean> = writable(false);
+    deaf: Writable<boolean> = writable(false);
     resolution: Writable<string> = writable("hd");
     error: Writable<string> = writable();
     status: Writable<VoiceStatus>;
@@ -100,23 +101,27 @@ class VoiceState {
 
     async join(roomId: string, userId: string) {
         this.status.set(VoiceStatus.RTC_CONNECTING);
-        const constraints = {
-            audio: fromStore(this.audio).current,
-            video: fromStore(this.video).current,
-            codec: "vp8",
-            resolution: fromStore(this.resolution).current,
-        };
+        
         return new Promise((resolve, fail) => {
+            const requestUserMedia = () => {
+                const constraints = {
+                    audio: get(this.audio),
+                    video: get(this.video),
+                    codec: "vp8",
+                    resolution: get(this.resolution),
+                };
+                LocalStream.getUserMedia(constraints).then(
+                    (stream) =>{
+                        //this.stream.set(stream);
+                        this.streams.set("user", stream);
+                        this.client?.publishTrack(stream);
+                    }
+                ).then(resolve).catch(fail);
+            }
             try {
-                this.client?.join(roomId, userId).then(()=>{
-                    LocalStream.getUserMedia(constraints).then(
-                        (stream) =>{
-                            //this.stream.set(stream);
-                            this.streams.set("user", stream);
-                            this.client?.publishTrack(stream);
-                        }
-                    ).then(resolve).catch(fail);
-                });
+                this.client?.join(roomId, userId);
+                this.audio.subscribe((value) => value && requestUserMedia());
+                this.video.subscribe((value) => value && requestUserMedia());
                 this.status.set(VoiceStatus.CONNECTED);
             } catch (error) {
                 console.error(error);
@@ -138,31 +143,19 @@ class VoiceState {
 
     leave() {
         this.connecting = false;
-        this.client?.signaling.leave();
+        this.client?.leave();
+        // Disconnects devices
+        get(this.stream)?.getTracks().forEach((track) => track.stop());
         this.status.set(VoiceStatus.READY);
         this.syncState();
     }
     
-    isDeaf() {
-        if (!this.client) return false;
-
-        return this.client.isDeaf;
-    }
-
     async startDeafen() {
-        if (!this.client) return console.log("No client object"); // ! TODO: let the user know
-        if (this.client.isDeaf) return;
-
-        this.client.isDeaf = true;
-
+        this.deaf.set(true);
         this.syncState();
     }
     async stopDeafen() {
-        if (!this.client) return console.log("No client object"); // ! TODO: let the user know
-        if (!this.client.isDeaf) return;
-
-        this.client.isDeaf = false;
-
+        this.deaf.set(false);
         this.syncState();
     }
 
