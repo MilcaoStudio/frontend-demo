@@ -1,6 +1,5 @@
 <script lang="ts">
   import { voiceState } from "$lib/voice/VoiceState";
-  import { getContext } from "svelte";
   import MicAction from "./actions/MicAction.svelte";
   import Avatar from "./Avatar.svelte";
   import VideoTrack from "./VideoTrack.svelte";
@@ -10,7 +9,7 @@
 
   //let stream = voiceState.stream;
   let streams = voiceState.streams;
-  let participants = $state(voiceState.participants);
+  let participants = $derived(voiceState.participants);
   let users = $derived.by(() =>{
     const keys = [...participants.keys()];
     console.debug("Participants (ids)", keys);
@@ -21,16 +20,14 @@
       ])
     )}
   );
-  
+
   let localVideoStream = $state(streams.get("user"));
   let localDisplayStream = $state(streams.get("display"));
-  let user = getContext<User>("user");
 </script>
 
 <div class="displayContainer">
   <div class="row">
-    <Avatar size={80} target={user} />
-    {#if localVideoStream}
+    {#if localVideoStream?.active}
       {#each localVideoStream.getVideoTracks() as track (track.id)}
         <VideoTrack stream={localVideoStream} />
       {/each}

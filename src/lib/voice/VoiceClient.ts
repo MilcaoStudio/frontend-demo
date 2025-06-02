@@ -287,6 +287,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     // Awaits for join signal response
     const answer = await this.signaling.join(roomId, offer);
     await this.handleAnswer(answer.description);
+    this.participants.set(userId, {streams: []});
   }
 
   leave() {
@@ -333,6 +334,10 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
   onUserJoin(event: UserJoinEventData) {
     const userId = event.user_id;
     const roomId = event.room_id;
+    if (userId == this.userId) {
+      console.debug("Ignoring self join");
+      return;
+    }
     if (this.roomId != roomId) {
       console.warn(
         "UserJoin event received for different room",
@@ -388,6 +393,16 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       );
     } catch (err) {
       console.error(err);
+    }
+  }
+
+  stopProduce(stream: LocalStream) {
+    const user = this.userId ? this.participants.get(this.userId): undefined;
+    if (user) {
+      const userId = this.userId!;
+      const streams = user.streams.filter((s) => s.id != stream.id);
+      this.participants.set(userId, {...user, streams});
+      console.debug(this.participants);
     }
   }
 

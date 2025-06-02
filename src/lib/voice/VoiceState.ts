@@ -116,7 +116,11 @@ class VoiceState {
                     (stream) =>{
                         //this.stream.set(stream);
                         this.streams.set("user", stream);
-                        this.client?.participants.set(userId, {streams: [stream]});
+                        const participants = this.client?.participants;
+                        const localUser = participants?.get(userId);
+                        if (localUser) {
+                            participants?.set(userId, { ...localUser, streams: [stream] });
+                        }
                         this.client?.publishTrack(stream);
                         this.syncState();
                     }
@@ -127,6 +131,7 @@ class VoiceState {
                 this.audio.subscribe((value) => value && requestUserMedia());
                 this.video.subscribe((value) => value && requestUserMedia());
                 this.status.set(VoiceStatus.CONNECTED);
+                this.syncState();
             } catch (error) {
                 console.error(error);
                 this.status.set(VoiceStatus.ERRORED);
@@ -185,6 +190,7 @@ class VoiceState {
         if (!stream) return false;
         try {
             stream.mute(kind);
+            if (kind == "video") this.client?.stopProduce(stream);
         } catch (error) {
             console.error(error);
             return false;
@@ -192,7 +198,7 @@ class VoiceState {
         return true;
     }
 
-    async startDisplay() {
+    async startDisplay(userId: string) {
         const constraints = {
             audio: true,
             video: true,
@@ -204,7 +210,10 @@ class VoiceState {
             const stream = await LocalStream.getDisplayMedia(constraints);
             this.streams.set("display", stream);
             this.screencast.set(true);
+            const localUser = this.client?.participants.get(userId);
+            localUser && this.client?.participants.set(userId, {...localUser, streams: [...localUser.streams, stream]});
             this.client?.publishTrack(stream);
+            this.syncState();
         } catch (error) {
             console.error(error);
             return false;
