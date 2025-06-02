@@ -114,7 +114,9 @@ class VoiceState {
                     (stream) =>{
                         //this.stream.set(stream);
                         this.streams.set("user", stream);
+                        this.client?.participants.set(userId, {streams: [stream]});
                         this.client?.publishTrack(stream);
+                        this.syncState();
                     }
                 ).then(resolve).catch(fail);
             }
@@ -144,6 +146,7 @@ class VoiceState {
     leave() {
         this.connecting = false;
         this.client?.leave();
+        this.tracks.clear();
         // Disconnects devices
         get(this.stream)?.getTracks().forEach((track) => track.stop());
         this.status.set(VoiceStatus.READY);
@@ -160,6 +163,8 @@ class VoiceState {
     }
 
     async startProducing(kind: "audio" | "video") {
+        if (kind == "audio") this.audio.set(true);
+        else if (kind == "video") this.video.set(true);
         const stream = this.streams.get("user");
         if (!stream) return false;
         try {
@@ -168,12 +173,12 @@ class VoiceState {
             console.error(error);
             return false;
         }
-        if (kind == "audio") this.audio.set(true);
-        else if (kind == "video") this.video.set(true);
         return true;
     }
 
     async stopProducing(kind: "audio" | "video") {
+        if (kind == "audio") this.audio.set(false);
+        else if (kind == "video") this.video.set(false);
         const stream = this.streams.get("user");
         if (!stream) return false;
         try {
@@ -182,8 +187,6 @@ class VoiceState {
             console.error(error);
             return false;
         }
-        if (kind == "audio") this.audio.set(false);
-        else if (kind == "video") this.video.set(false);
         return true;
     }
 
@@ -198,7 +201,6 @@ class VoiceState {
         try {
             const stream = await LocalStream.getDisplayMedia(constraints);
             this.streams.set("display", stream);
-            //this.stream.set(stream);
             this.screencast.set(true);
             this.client?.publishTrack(stream);
         } catch (error) {
