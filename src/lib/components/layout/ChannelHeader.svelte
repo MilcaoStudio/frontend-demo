@@ -6,9 +6,10 @@
     import VideoUi from "../VideoUI.svelte";
     import { P2, P4 } from "vermeer-ui";
     import ChannelName from "../channel/ChannelName.svelte";
+    import type { User } from "uprising.js";
 
     let { channel }: { channel: Channel } = $props();
-    let userId = getContext<string | undefined>("user") ?? "";
+    let user = getContext<User>("user");
     let status = voiceState.status;
 </script>
 
@@ -20,7 +21,7 @@
         </div>
         <div class="actions">
             {#if channel.type == "voice"}
-                <CallAction channelId={channel.id} {userId} />
+                <CallAction channelId={channel.id} userId={user.id ?? ""} />
             {/if}
         </div>
     </div>
