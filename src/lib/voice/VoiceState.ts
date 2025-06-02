@@ -101,6 +101,8 @@ class VoiceState {
 
     async join(roomId: string, userId: string) {
         this.status.set(VoiceStatus.RTC_CONNECTING);
+        if (typeof userId != "string") throw TypeError("User ID must be a string");
+        if (typeof roomId != "string") throw TypeError("Room ID must be a string");
         
         return new Promise((resolve, fail) => {
             const requestUserMedia = () => {

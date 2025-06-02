@@ -1,4 +1,6 @@
+import { decodeTime } from "ulid";
 import { StatusMode, type UserStatus, type User as IUser } from "./API";
+import { base } from "$app/paths";
 
 export class User {
     private _id: string;
@@ -17,7 +19,7 @@ export class User {
     static create(data: {id: string, avatar?: string, username: string, display_name?: string|null, status?: Partial<UserStatus>}) {
         return new User({
             id: data.id,
-            avatar: data.avatar ?? null,
+            avatar: data.avatar ?? `${base}/avatars/${(decodeTime(data.id) % 7) + 1}.png`,
             username: data.username,
             display_name: data.display_name ?? null,
             status: {

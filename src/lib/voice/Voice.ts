@@ -184,6 +184,18 @@ export interface AuthenticationResult {
 
 export interface VoiceUser {
     audio?: boolean;
+    streams: MediaStream[];
 }
 
 export type MediaType = "audio" | "video" | "screencast";
+
+export type UserJoinEventData = {
+    user_id: string
+    room_id: string
+    user_tracks: string[]
+}
+
+export type UserLeftEventData = {
+    room_id: string
+    user_id: string
+}

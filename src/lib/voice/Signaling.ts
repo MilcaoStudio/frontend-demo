@@ -75,10 +75,11 @@ export default class Signaling extends EventEmitter<SignalingEvents> {
         const json = JSON.parse(event.data);
         const id = json.id;
         if (!id) {
+            console.debug("S->C", event.data);
             this.emit("data", json);
             return;
         }
-        console.debug("Received:", id, event.data);
+        console.debug("S->C", id, event.data);
         const entry = this.pending.get(id);
         if (!entry) {
             this.emit("data", json);
@@ -144,7 +145,7 @@ export default class Signaling extends EventEmitter<SignalingEvents> {
                 type,
                 ...data,
             };
-            console.debug(json);
+            console.debug("C->S", json);
             ws.send(`${JSON.stringify(json)}\n`);
         });
     }
