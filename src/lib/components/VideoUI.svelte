@@ -49,7 +49,7 @@
 
   <!-- TODO: View remote streams -->
   <div class="actions">
-    <MicAction size={32} />
+    <MicAction size={28} />
     <VideoAction size={32} />
     <ScreencastAction size={32} />
   </div>
