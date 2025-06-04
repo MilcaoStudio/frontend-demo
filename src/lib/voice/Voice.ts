@@ -124,6 +124,7 @@ export enum WSEventType {
     UserLeft = "UserLeft",
 
     Offer = "Offer",
+    RoomInfo = "RoomInfo",
     Trickle = "Trickle",
 
     UserStartProduce = "UserStartProduce",
@@ -189,6 +190,12 @@ export interface VoiceUser {
 
 export type MediaType = "audio" | "video" | "screencast";
 
+export type RoomInfo = {
+    room: {
+        id: string;
+        users: Record<string, MediaStreamTrack["id"][]>;
+    }
+}
 export type UserJoinEventData = {
     user_id: string
     room_id: string

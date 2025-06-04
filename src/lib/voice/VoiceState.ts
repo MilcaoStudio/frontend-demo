@@ -72,6 +72,7 @@ class VoiceState {
             const client = new VoiceClient();
 
             client.on("ready", this.syncState);
+            client.on("roomInfo", this.syncState);
             client.on("userJoined", this.syncState);
             client.on("userLeft", this.syncState);
             this.client = client;
@@ -191,6 +192,7 @@ class VoiceState {
         try {
             stream.mute(kind);
             if (kind == "video") this.client?.stopProduce(stream);
+            this.syncState();
         } catch (error) {
             console.error(error);
             return false;

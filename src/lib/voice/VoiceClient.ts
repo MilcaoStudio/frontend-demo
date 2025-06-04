@@ -9,6 +9,7 @@ import {
   type Trickle,
   type UserJoinEventData,
   type UserLeftEventData,
+  type RoomInfo,
 } from "./Voice";
 import Signaling from "./Signaling";
 import { LocalStream, makeRemote, type RemoteStream } from "./Stream";
@@ -20,6 +21,7 @@ interface VoiceEvents {
   close: (error?: VoiceError) => void;
   userJoined: (userId: string) => void;
   userLeft: (userId: string) => void;
+  roomInfo: () => void;
 }
 
 const API_CHANNEL = "System";
@@ -123,6 +125,10 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
             }
             break;
           }
+          case WSEventType.RoomInfo: {
+            this.handleRoomInfo(data);
+            break;
+          }
           case WSEventType.Trickle: {
             this.trickle(data);
             break;
@@ -194,6 +200,27 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       },
       this
     );
+  }
+
+  handleRoomInfo(data: RoomInfo) {
+    console.debug("RoomInfo: ", JSON.stringify(data));
+    const room = data.room;
+    Object.entries(room.users).forEach(([userId, tracks]) => {
+      if (userId == this.userId) {
+        console.debug("Ignoring this user's tracks");
+        return;
+      }
+      const streams = tracks.map((trackId) => {
+        const stream = voiceState.tracks.get(trackId);
+        if (!stream) {
+          console.warn("Stream for %s not found", trackId);
+        }
+        return stream;
+      }).filter((stream) => stream != undefined);
+      this.participants.set(userId, { streams })
+    });
+    this.emit("roomInfo");
+    console.debug("Initial participants size", this.participants.size);
   }
 
   addTrack(track: MediaStreamTrack, stream: RemoteStream) {
