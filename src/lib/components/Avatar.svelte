@@ -14,8 +14,6 @@
             <img src={target.avatar} alt="Avatar" />
         </foreignObject>
     </svg>
-{:else}
-    <span>Unknown user</span>
 {/if}
 
 <style>
