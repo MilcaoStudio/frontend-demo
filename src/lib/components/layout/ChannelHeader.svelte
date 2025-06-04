@@ -1,16 +1,16 @@
 <script lang="ts">
-    import type { Channel } from "$lib";
     import { getContext } from "svelte";
     import CallAction from "../CallAction.svelte";
     import { voiceState, VoiceStatus } from "$lib/voice/VoiceState";
     import VideoUi from "../VideoUI.svelte";
     import { P2, P4 } from "vermeer-ui";
     import ChannelName from "../channel/ChannelName.svelte";
-    import type { User } from "uprising.js";
+    import type { Channel, User } from "uprising.js";
 
     let { channel }: { channel: Channel } = $props();
     let user = getContext<User>("user");
     let status = voiceState.status;
+    let roomId = voiceState.roomId;
 </script>
 
 <div class="header">
@@ -25,7 +25,7 @@
             {/if}
         </div>
     </div>
-    {#if $status >= VoiceStatus.RTC_CONNECTING}
+    {#if $status >= VoiceStatus.RTC_CONNECTING && $roomId == channel.id}
         <VideoUi />
     {/if}
 </div>

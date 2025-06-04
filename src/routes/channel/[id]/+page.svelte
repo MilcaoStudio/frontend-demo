@@ -9,6 +9,7 @@
             document.title = `#${channel.name} | Uprising demo`;
         }
     });
+    $inspect(channel);
 </script>
 {#if channel}
     <ChannelArea {channel} />

@@ -3,11 +3,12 @@
     import ChannelList from "$lib/components/layout/ChannelList.svelte";
     import MemberList from "$lib/components/layout/MemberList.svelte";
     import UserArea from "$lib/components/layout/UserArea.svelte";
-    import { StatusMode, User } from "uprising.js";
+    import { User } from "uprising.js";
     import { voiceState } from "$lib/voice/VoiceState";
     import { onMount, setContext } from "svelte";
-    import { decodeTime, ulid } from "ulid";
+    import { ulid } from "ulid";
     import ModalRenderer from "$lib/components/modal/ModalRenderer.svelte";
+    import { StatusMode } from "$lib/uprising.js/API";
 
     let userId = ulid();
     let user = User.create({id: userId, username: userId, display_name: userId, status: {mode: StatusMode.ONLINE, text: "Playing Metro Exodus"}});
