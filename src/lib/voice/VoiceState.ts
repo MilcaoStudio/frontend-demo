@@ -37,12 +37,12 @@ class VoiceState {
     status: Writable<VoiceStatus>;
     stream: Writable<LocalStream> = writable();
     streams: Map<string, LocalStream> = new SvelteMap;
-    roomId: string | null;
+    roomId: Writable<string | null>;
     participants: Map<string, VoiceUser>;
     tracks: Map<string, RemoteStream>;
 
     constructor() {
-        this.roomId = null;
+        this.roomId = writable(null);
         this.status = writable(VoiceStatus.UNLOADED);
         this.participants = new SvelteMap;
         this.tracks = new SvelteMap;
@@ -56,7 +56,7 @@ class VoiceState {
     // client and applies it to the state here.
     syncState() {
         if (!this.client) return;
-        this.roomId = this.client.roomId ?? null;
+        this.roomId.set(this.client.roomId ?? null);
         this.participants.clear();
         this.client.participants.forEach((v, k) => this.participants.set(k, v));
     }
