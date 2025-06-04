@@ -12,6 +12,9 @@
     --textMain: #B8C3FF;
     --textDim: #888AA4;
     --colorPrimary: #404F92;
+
+    --video-width: 320px;
+    --video-height: 180px;
 }
 
 body {

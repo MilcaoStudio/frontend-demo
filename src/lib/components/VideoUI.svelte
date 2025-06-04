@@ -6,10 +6,11 @@
   import { User } from "uprising.js";
   import VideoAction from "./actions/VideoAction.svelte";
   import ScreencastAction from "./actions/ScreencastAction.svelte";
+  import UserDisplay from "./UserDisplay.svelte";
 
   //let stream = voiceState.stream;
   let streams = voiceState.streams;
-  let participants = $derived(voiceState.participants);
+  let participants = voiceState.participants;
   let users = $derived.by(() =>{
     const keys = [...participants.keys()];
     console.debug("Participants (ids)", keys);
@@ -21,29 +22,20 @@
     )}
   );
 
-  let localVideoStream = $state(streams.get("user"));
-  let localDisplayStream = $state(streams.get("display"));
+  //let localVideoStream = $state(streams.get("user"));
+  //let localDisplayStream = $state(streams.get("display"));
 </script>
 
 <div class="displayContainer">
-  <div class="row">
-    {#if localVideoStream?.active}
-      {#each localVideoStream.getVideoTracks() as track (track.id)}
-        <VideoTrack stream={localVideoStream} />
-      {/each}
-    {/if}
-    {#if localDisplayStream}
-      {#each localDisplayStream.getVideoTracks() as track (track.id)}
-        <VideoTrack stream={localDisplayStream} />
-      {/each}
-    {/if}
-  </div>
   {#each participants.entries() as [id, data] (id)}
     <div class="row">
-        <Avatar size={80} target={users.get(id)} />
+      {#if data.streams.length}
         {#each data.streams as stream (stream.id)}
-            <VideoTrack stream={stream} />
+            <VideoTrack stream={stream} user={users.get(id)} />
         {/each}
+      {:else}
+        <UserDisplay user={users.get(id)} />
+      {/if}
     </div>
   {/each}
 
