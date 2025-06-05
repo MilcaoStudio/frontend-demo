@@ -107,30 +107,56 @@ class VoiceState {
         
         return new Promise((resolve, fail) => {
             const requestUserMedia = () => {
+                const audio = get(this.audio);
+                const video = get(this.video);
                 const constraints = {
-                    audio: get(this.audio),
-                    video: get(this.video),
+                    audio,
+                    video,
                     codec: "vp8",
                     resolution: get(this.resolution),
                 };
-                LocalStream.getUserMedia(constraints).then(
+                return LocalStream.getUserMedia(constraints).then(
                     (stream) =>{
                         //this.stream.set(stream);
-                        this.streams.set("user", stream);
+                        //this.streams.set("user", stream);
                         const participants = this.client?.participants;
                         const localUser = participants?.get(userId);
-                        if (localUser) {
-                            participants?.set(userId, { ...localUser, streams: [stream] });
-                        }
+                        const updated = {
+                            audio: stream.getVideoTracks().length > 0,
+                            video: stream.getAudioTracks().length > 0,
+                            streams: [stream],
+                        };
+                        participants?.set(userId, {...(localUser || {}), ...updated });
                         this.client?.publishTrack(stream);
-                        this.syncState();
                     }
                 ).then(resolve).catch(fail);
             }
             try {
                 this.client?.join(roomId, userId);
-                this.audio.subscribe((value) => value && requestUserMedia());
-                this.video.subscribe((value) => value && requestUserMedia());
+                this.audio.subscribe(async (value) => {
+                    //const stream = this.streams.get("user");
+                    const user = this.participants.get(userId);
+                    const stream = user?.streams[0] as LocalStream;
+                    if (user && stream) {
+                        value ? await stream.unmute("audio") : stream.mute("audio");
+                        this.participants.set(userId, {...user, audio: value, streams: [stream]});
+                    } else {
+                        await requestUserMedia();
+                    }
+                    this.syncState();
+                });
+                this.video.subscribe(async (value) => {
+                    //const stream = this.streams.get("user");
+                    const user = this.participants.get(userId);
+                    const stream = user?.streams[0] as LocalStream;
+                    if (user && stream) {
+                        value ? await stream.unmute("video") : stream.mute("video");
+                        this.participants.set(userId, {...user, video: value, streams: [stream]});
+                    } else {
+                        await requestUserMedia();
+                    }
+                    this.syncState();
+                });
                 this.status.set(VoiceStatus.CONNECTED);
                 this.syncState();
             } catch (error) {
@@ -173,30 +199,14 @@ class VoiceState {
     async startProducing(kind: "audio" | "video") {
         if (kind == "audio") this.audio.set(true);
         else if (kind == "video") this.video.set(true);
-        const stream = this.streams.get("user");
-        if (!stream) return false;
-        try {
-            stream.unmute(kind);
-        } catch (error) {
-            console.error(error);
-            return false;
-        }
+        else return false;
         return true;
     }
 
     async stopProducing(kind: "audio" | "video") {
         if (kind == "audio") this.audio.set(false);
         else if (kind == "video") this.video.set(false);
-        const stream = this.streams.get("user");
-        if (!stream) return false;
-        try {
-            stream.mute(kind);
-            if (kind == "video") this.client?.stopProduce(stream);
-            this.syncState();
-        } catch (error) {
-            console.error(error);
-            return false;
-        }
+        else return false;
         return true;
     }
 

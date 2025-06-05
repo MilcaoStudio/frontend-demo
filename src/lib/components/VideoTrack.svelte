@@ -6,9 +6,10 @@
 
     let { stream, user }: { stream: MediaStream, user: User | undefined } = $props();
     let ref: HTMLVideoElement | HTMLAudioElement | undefined = $state();
-    let videoTracks = $derived(stream.getVideoTracks());
+    let videoTracks = $state(stream.getVideoTracks());
   
     $effect(() => {
+      videoTracks = stream.getVideoTracks();
       if (ref) ref.srcObject = stream;
     });
   
@@ -26,8 +27,8 @@
     <div class="container">
       <div class="video-overlay display-hover">
         <div class="inline-flex">
-          <p class="username">{user?.username}</p>
           <Avatar target={user} size={20} />
+          <p class="username">{user?.username}</p>
         </div>
       </div>
         <!-- svelte-ignore a11y_media_has_caption -->

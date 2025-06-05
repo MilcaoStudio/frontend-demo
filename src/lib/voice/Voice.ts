@@ -185,6 +185,8 @@ export interface AuthenticationResult {
 
 export interface VoiceUser {
     audio?: boolean;
+    video?: boolean;
+    screencast?: boolean;
     streams: MediaStream[];
 }
 

@@ -9,8 +9,9 @@
   import UserDisplay from "./UserDisplay.svelte";
 
   //let stream = voiceState.stream;
-  let streams = voiceState.streams;
+  //let streams = voiceState.streams;
   let participants = voiceState.participants;
+  $inspect(participants);
   let users = $derived.by(() =>{
     const keys = [...participants.keys()];
     console.debug("Participants (ids)", keys);
