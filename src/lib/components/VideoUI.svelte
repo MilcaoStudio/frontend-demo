@@ -22,9 +22,6 @@
       ])
     )}
   );
-
-  //let localVideoStream = $state(streams.get("user"));
-  //let localDisplayStream = $state(streams.get("display"));
 </script>
 
 <div class="displayContainer">
@@ -32,7 +29,7 @@
     <div class="row">
       {#if data.streams.length}
         {#each data.streams as stream (stream.id)}
-            <VideoTrack stream={stream} user={users.get(id)} />
+            <VideoTrack stream={stream} user={users.get(id)} voiceUser={data} />
         {/each}
       {:else}
         <UserDisplay user={users.get(id)} />

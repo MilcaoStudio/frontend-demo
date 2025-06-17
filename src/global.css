@@ -15,6 +15,9 @@
 
     --video-width: 320px;
     --video-height: 180px;
+
+    --success: #13AA13;
+    --error: #a81313;
 }
 
 body {

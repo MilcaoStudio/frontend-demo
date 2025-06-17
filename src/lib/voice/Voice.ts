@@ -179,14 +179,17 @@ export interface VoiceError {
 }
 
 export interface AuthenticationResult {
-    userId: string;
-    partipants: string[];
+    user_id: string;
+    //partipants: string[];
+    ice_servers: RTCIceServer[];
 }
 
 export interface VoiceUser {
+    id: string;
     audio?: boolean;
     video?: boolean;
     screencast?: boolean;
+    active: boolean;
     streams: MediaStream[];
 }
 
@@ -198,6 +201,11 @@ export type RoomInfo = {
         users: Record<string, MediaStreamTrack["id"][]>;
     }
 }
+
+export type VoiceActivityEventData = {
+    stream_ids: MediaStream["id"][];
+}
+
 export type UserJoinEventData = {
     user_id: string
     room_id: string

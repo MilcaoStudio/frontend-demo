@@ -3,8 +3,9 @@
   import Avatar from "./Avatar.svelte";
   import Clickable from "./Clickable.svelte";
   import UserDisplay from "./UserDisplay.svelte";
+  import type { VoiceUser } from "$lib/voice/Voice";
 
-    let { stream, user }: { stream: MediaStream, user: User | undefined } = $props();
+    let { stream, user, voiceUser }: { stream: MediaStream, user: User | undefined, voiceUser: VoiceUser } = $props();
     let ref: HTMLVideoElement | HTMLAudioElement | undefined = $state();
     let videoTracks = $state(stream.getVideoTracks());
   
@@ -14,13 +15,14 @@
     });
   
     function onclick() {
+      videoTracks = stream.getVideoTracks();
       console.debug(stream);
     }
   </script>
   
   <Clickable {onclick}>
     {#if !videoTracks.length}
-    <UserDisplay user={user}>
+    <UserDisplay user={user} speaking={voiceUser.active}>
       <audio autoplay bind:this={ref}></audio>
     </UserDisplay>
     {:else}

@@ -10,6 +10,8 @@ import {
   type UserJoinEventData,
   type UserLeftEventData,
   type RoomInfo,
+  type VoiceActivityEventData,
+  type AuthenticationResult,
 } from "./Voice";
 import Signaling from "./Signaling";
 import { LocalStream, makeRemote, type RemoteStream } from "./Stream";
@@ -19,9 +21,10 @@ interface VoiceEvents {
   ready: () => void;
   error: (error: Error) => void;
   close: (error?: VoiceError) => void;
-  userJoined: (userId: string) => void;
   userLeft: (userId: string) => void;
   roomInfo: () => void;
+  voiceActivityChanged: () => void;
+  userUpdated: (user: VoiceUser) => void;
 }
 
 const API_CHANNEL = "System";
@@ -88,14 +91,6 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     super();
     this.config = {
       codec: "vp8",
-      iceServers: [
-        {
-          urls: [
-            "stun:stun.l.google.com:19302",
-            "stun:stun2.l.google.com:19302",
-          ],
-        },
-      ],
     };
     this.signaling = new Signaling();
     this.participants = new Map();
@@ -106,11 +101,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       (data) => {
         switch (data.type) {
           case WSEventType.Accept: {
-            console.log("Accept", data);
-            data.user_ids.forEach((id: string) => {
-              this.participants.set(id, { streams: [] });
-            });
-            this.emit("ready");
+            this.handleAccept(data);
             break;
           }
           case WSEventType.Answer: {
@@ -131,14 +122,6 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
           }
           case WSEventType.Trickle: {
             this.trickle(data);
-            break;
-          }
-          case WSEventType.UserJoin: {
-            this.participants.set(data.id, data);
-            console.debug(data);
-            //state.settings.sounds.playSound("call_join");
-            // TODO: connect to user tracks (offer?)
-            this.emit("userJoined", data.id);
             break;
           }
           case WSEventType.UserLeft: {
@@ -200,6 +183,32 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       },
       this
     );
+
+    this.signaling.on("negotiate", (role) => {
+      console.debug("Negotiate %s not implemented", role);
+    });
+  }
+
+  addParticipant(participant: VoiceUser) {
+    this.participants.set(participant.id, participant);
+    this.emit("userUpdated", participant);
+  }
+
+  handleAccept(data: AuthenticationResult) {
+    if (data.ice_servers) {
+      this.config.iceServers = data.ice_servers;
+    } else {
+      this.config.iceServers = [
+        {
+          urls: [
+            "stun:stun.l.google.com:19302",
+            "stun:stun2.l.google.com:19302",
+          ],
+        },
+      ];
+    }
+    console.debug("Config loaded", this.config);
+    this.emit("ready");
   }
 
   handleRoomInfo(data: RoomInfo) {
@@ -210,14 +219,16 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
         console.debug("Ignoring this user's tracks");
         return;
       }
-      const streams = tracks.map((trackId) => {
-        const stream = voiceState.tracks.get(trackId);
-        if (!stream) {
-          console.warn("Stream for %s not found", trackId);
-        }
-        return stream;
-      }).filter((stream) => stream != undefined);
-      this.participants.set(userId, { streams })
+      const streams = tracks
+        .map((trackId) => {
+          const stream = voiceState.tracks.get(trackId);
+          if (!stream) {
+            console.warn("Stream for %s not found", trackId);
+          }
+          return stream;
+        })
+        .filter((stream) => stream != undefined);
+      this.addParticipant({ id: userId, active: false, streams });
     });
     this.emit("roomInfo");
     console.debug("Initial participants size", this.participants.size);
@@ -239,7 +250,8 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
 
   async connect(address: string, token: string) {
     await this.signaling.connect(address);
-    await this.signaling.authenticate(token);
+    const result = await this.signaling.authenticate(token);
+    this.handleAccept(result);
   }
 
   /**
@@ -254,7 +266,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       this.transports![Role.pub].pc.addIceCandidate(c)
     );
     this.transports[Role.pub].pc.onnegotiationneeded = () =>
-      this.renegotiate(false);
+      this.renegotiatePublisher(false);
   }
 
   handleDataChannelMessage(msg: { type: string; data: any }) {
@@ -262,11 +274,13 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     switch (type) {
       case "UserJoin":
         this.onUserJoin(data);
-        this.emit("userJoined", data.user_id);
         break;
       case "UserLeft":
         this.onUserLeave(data);
         this.emit("userLeft", data.user_id);
+        break;
+      case "VoiceActivity":
+        this.onVoiceActivity(data);
         break;
       default:
         console.debug("Unknown message type", msg.type);
@@ -314,7 +328,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     // Awaits for join signal response
     const answer = await this.signaling.join(roomId, offer);
     await this.handleAnswer(answer.description);
-    this.participants.set(userId, {streams: []});
+    this.addParticipant({ id: userId, active: false, streams: [] });
   }
 
   leave() {
@@ -381,8 +395,11 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
         return s;
       })
       .filter((stream) => stream != undefined);
-    this.participants.set(userId, {
+    this.addParticipant({
+      id: userId,
+      active: false,
       streams,
+      // TODO: add user capabilities in event (audio/video/screencast)
     });
     console.debug("UserJoin", userId, streams);
   }
@@ -401,34 +418,66 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     console.debug("%s removed from participants", userId);
   }
 
+  onVoiceActivity(data: VoiceActivityEventData) {
+    console.debug("VoiceActivity", data);
+    const streamIds = new Set(data.stream_ids);
+    this.participants.forEach((u) => {
+      u.active = u.streams.some((s) => streamIds.has(s.id));
+    });
+    this.emit("voiceActivityChanged");
+  }
+
   /**
    * Restarts publisher negotiation
    */
-  async renegotiate(iceRestart: boolean) {
+  async renegotiatePublisher(iceRestart: boolean) {
     if (!this.transports) {
       throw ERR_INVALID_STATE;
     }
 
     let offer: RTCSessionDescriptionInit,
       answer: { type: "Answer"; description: RTCSessionDescriptionInit };
+    const pc = this.transports[Role.pub].pc;
     try {
-      offer = await this.transports[Role.pub].pc.createOffer({ iceRestart });
-      await this.transports[Role.pub].pc.setLocalDescription(offer);
+      offer = await pc.createOffer({ iceRestart });
+      await pc.setLocalDescription(offer);
       answer = await this.signaling.offer(offer);
-      await this.transports[Role.pub].pc.setRemoteDescription(
-        answer.description
-      );
+      await pc.setRemoteDescription(answer.description);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  /**
+   * Restarts subscriber negotiation
+   */
+  async renegotiateSubscriber(iceRestart: boolean) {
+    if (!this.transports) {
+      throw ERR_INVALID_STATE;
+    }
+
+    let offer: RTCSessionDescriptionInit,
+      answer: { type: "Answer"; description: RTCSessionDescriptionInit };
+    const pc = this.transports[Role.sub].pc;
+    try {
+      offer = await pc.createOffer({ iceRestart });
+      await pc.setLocalDescription(offer);
+      answer = await this.signaling.offer(offer);
+      await pc.setRemoteDescription(answer.description);
     } catch (err) {
       console.error(err);
     }
   }
 
   stopProduce(stream: LocalStream) {
-    const user = this.userId ? this.participants.get(this.userId): undefined;
+    if (!this.userId) {
+      throw ERR_INVALID_STATE;
+    };
+
+    const user = this.participants.get(this.userId);
     if (user) {
-      const userId = this.userId!;
       const streams = user.streams.filter((s) => s.id != stream.id);
-      this.participants.set(userId, {...user, streams});
+      this.updateParticipant(this.userId, { streams });
       console.debug(this.participants);
     }
   }
@@ -439,11 +488,25 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
         "Client transports are undefined. Use join method."
       );
     }
+
+    if (!this.userId) {
+      throw ERR_INVALID_STATE;
+    }
+
+    const stream = atStream;
+    const updated = {
+      active: false,
+      audio: stream.getAudioTracks().length > 0,
+      video: stream.getVideoTracks().length > 0,
+      streams: [stream],
+    };
+
+    this.updateParticipant(this.userId, updated);
     atStream.publish(this.transports[Role.pub]);
   }
 
   restartIce() {
-    this.renegotiate(true);
+    this.renegotiatePublisher(true);
   }
 
   async trickle({ candidate, target }: Trickle) {
@@ -455,5 +518,16 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     } else {
       this.transports[target].candidates.push(candidate);
     }
+  }
+
+  updateParticipant(id: string, participant: Partial<VoiceUser>) {
+    const user = this.participants.get(id);
+    if (!user) {
+      console.warn("User not found", id);
+      return;
+    }
+    const updatedUser = { ...user, ...participant };
+    this.participants.set(id, updatedUser);
+    this.emit("userUpdated", updatedUser);
   }
 }

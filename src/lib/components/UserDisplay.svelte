@@ -4,11 +4,11 @@
   import Avatar from "./Avatar.svelte";
   import { P3 } from "vermeer-ui";
 
-    let { user, children }: { user?: User, children?: Snippet<[]> } = $props();
+    let { user, children, speaking = false }: { user?: User, speaking?: boolean, children?: Snippet<[]> } = $props();
 </script>
 
 <div class="user-display">
-    <Avatar target={user} size={80} />
+    <Avatar target={user} size={80} borderColor={speaking ? "var(--success)" : "transparent"} />
     <P3>{user?.username}</P3>
     {@render children?.()}
 </div>

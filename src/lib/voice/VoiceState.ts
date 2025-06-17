@@ -73,8 +73,9 @@ class VoiceState {
 
             client.on("ready", this.syncState);
             client.on("roomInfo", this.syncState);
-            client.on("userJoined", this.syncState);
             client.on("userLeft", this.syncState);
+            client.on("voiceActivityChanged", this.syncState);
+            client.on("userUpdated", this.updateParticipant);
             this.client = client;
         } catch (err) {
             this.status.set(VoiceStatus.UNLOADED);
@@ -105,10 +106,14 @@ class VoiceState {
         if (typeof userId != "string") throw TypeError("User ID must be a string");
         if (typeof roomId != "string") throw TypeError("Room ID must be a string");
         
-        return new Promise((resolve, fail) => {
+        return new Promise<void>(async (resolve, fail) => {
             const requestUserMedia = () => {
                 const audio = get(this.audio);
                 const video = get(this.video);
+                if (!audio && !video) {
+                    resolve();
+                }
+
                 const constraints = {
                     audio,
                     video,
@@ -119,44 +124,34 @@ class VoiceState {
                     (stream) =>{
                         //this.stream.set(stream);
                         //this.streams.set("user", stream);
-                        const participants = this.client?.participants;
-                        const localUser = participants?.get(userId);
-                        const updated = {
-                            audio: stream.getVideoTracks().length > 0,
-                            video: stream.getAudioTracks().length > 0,
-                            streams: [stream],
-                        };
-                        participants?.set(userId, {...(localUser || {}), ...updated });
                         this.client?.publishTrack(stream);
                     }
                 ).then(resolve).catch(fail);
             }
             try {
-                this.client?.join(roomId, userId);
                 this.audio.subscribe(async (value) => {
-                    //const stream = this.streams.get("user");
                     const user = this.participants.get(userId);
                     const stream = user?.streams[0] as LocalStream;
                     if (user && stream) {
                         value ? await stream.unmute("audio") : stream.mute("audio");
-                        this.participants.set(userId, {...user, audio: value, streams: [stream]});
+                        this.client?.updateParticipant(userId, {audio: value, streams: [stream]});
                     } else {
                         await requestUserMedia();
                     }
                     this.syncState();
                 });
                 this.video.subscribe(async (value) => {
-                    //const stream = this.streams.get("user");
                     const user = this.participants.get(userId);
                     const stream = user?.streams[0] as LocalStream;
                     if (user && stream) {
                         value ? await stream.unmute("video") : stream.mute("video");
-                        this.participants.set(userId, {...user, video: value, streams: [stream]});
+                        this.client?.updateParticipant(userId, {video: value, streams: [stream]});
                     } else {
                         await requestUserMedia();
                     }
                     this.syncState();
                 });
+                await this.client?.join(roomId, userId);
                 this.status.set(VoiceStatus.CONNECTED);
                 this.syncState();
             } catch (error) {
@@ -177,12 +172,19 @@ class VoiceState {
         this.syncState();
     }
 
-    leave() {
+    leave(userId: string) {
         this.connecting = false;
         this.client?.leave();
         this.tracks.clear();
+
+        if (typeof userId != "string") throw TypeError("User ID must be a string");
         // Disconnects devices
-        get(this.stream)?.getTracks().forEach((track) => track.stop());
+        const local = this.participants.get(userId);
+        if (local) {
+            local.streams.forEach((streams) => streams.getTracks().forEach((tracks) => tracks.stop()));
+            this.participants.delete(userId);
+        }
+        //get(this.stream)?.getTracks().forEach((track) => track.stop());
         this.status.set(VoiceStatus.READY);
         this.syncState();
     }
@@ -245,6 +247,11 @@ class VoiceState {
             return false;
         }
         return true;
+    }
+
+    updateParticipant(user: VoiceUser) {
+        console.debug("Updating participant", user.id);
+        this.participants.set(user.id, user);
     }
 }
 
