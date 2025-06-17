@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Channel } from "$lib";
+    import type { Channel } from "uprising.js";
     let { channel, prefix }: { channel: Channel, prefix?: boolean } = $props();
 </script>
 
