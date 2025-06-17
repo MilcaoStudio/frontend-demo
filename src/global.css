@@ -1,5 +1,6 @@
 :root {
-    --borderRadius: 3px;
+    --borderRadius: 6px !important;
+    --borderRadiusOuter: 8px;
     --borderRadiusUser: 16px;
     --padding-s: 6px;
     --padding-m: 8px;
@@ -21,5 +22,9 @@
 }
 
 body {
+    margin: 0;
+}
+
+p {
     margin: 0;
 }

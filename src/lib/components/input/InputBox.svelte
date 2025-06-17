@@ -1,7 +1,8 @@
 <script lang="ts">
     import { P3 } from "vermeer-ui";
+    import type { HTMLAttributes } from "svelte/elements";
 
-    let { label, onchange, changeonkeyup = true, value, ...rest }: { label?: string, onchange: (value: string) => void, changeonkeyup?: boolean, value?: string|null } = $props();
+    let { label, onchange, changeonkeyup = true, value, ...rest }: { label?: string, onchange: (value: string) => void, changeonkeyup?: boolean, value?: string|null } & Omit<HTMLAttributes<HTMLInputElement>, "onchange"> = $props();
 </script>
 
 {#if label}
@@ -19,7 +20,6 @@
         background-color: var(--bgHighlight);
         color: var(--textMain);
         margin: 0;
-        margin-top: 16px;
         border: none;
         height: 32px;
         border-radius: 8px;

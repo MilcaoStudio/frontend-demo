@@ -12,7 +12,6 @@
   import { useClient } from "$lib/uprising.js/LocalClient";
   import { derived } from "svelte/store";
   import Link from "../Link.svelte";
-  import CallAction from "../CallAction.svelte";
 
     let { user }: { user: User } = $props();
     let voiceStatus = voiceState.status;
@@ -52,7 +51,7 @@
                     console.log("Clicked!");
                 }}
             >
-                <Username {user} />
+                <Username {user} color="var(--textMain)" />
             </Clickable>
             <P4 class="status">{user.status.text}</P4>
         </div>
@@ -84,9 +83,5 @@
         display: inline-flex;
         gap: 8px;
         padding: 12px 0;
-    }
-
-    :global(.status) {
-        margin: 0;
     }
 </style>
