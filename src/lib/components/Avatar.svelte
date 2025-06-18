@@ -1,20 +1,29 @@
 <script lang="ts">
     import type { User } from "$lib/uprising.js";
+  import StatusGraphic from "./user/StatusGraphic.svelte";
 
     let {
         target,
         size,
-        borderColor = "none",
-        onclick,
-    }: { target?: User; size: number; borderColor?: string; onclick?: () => {} } = $props();
+        withBorder = false,
+        withGraphic = false,
+    }: { target?: User; size: number; withBorder?: boolean; withGraphic?: boolean } = $props();
+    let center = $derived(size / 2);
+    let graphicRadius = Math.floor(size / 6);
 </script>
 
 {#if target && target.avatar}
-    <svg width={size} height={size} viewBox="0 0 {size} {size}">
-        <foreignObject class:border={borderColor && borderColor != "none"} width={size} height={size} style:--borderColor={borderColor}>
-            <img src={target.avatar} alt="Avatar" />
-        </foreignObject>
-    </svg>
+<svg width={size} height={size} viewBox="0 0 {size} {size}">
+    {#if withBorder}
+        <circle cx={center} cy={center} r={center - 2} stroke="var(--status-{target.status.mode})" stroke-width="4" />
+    {/if}
+    <foreignObject x="2" y="2" width={size - 4} height={size - 4}>
+        <img src={target.avatar} alt="Avatar" />
+    </foreignObject>
+    {#if withGraphic}
+        <StatusGraphic status={target.status.mode} offset={size - graphicRadius} size={graphicRadius} />
+    {/if}
+  </svg>
 {/if}
 
 <style>
@@ -26,9 +35,5 @@
 
     foreignObject {
         border-radius: 50%;
-    }
-
-    foreignObject.border {
-        border: 2px solid var(--borderColor);
     }
 </style>

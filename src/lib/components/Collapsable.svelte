@@ -30,6 +30,7 @@
 <style>
   ul {
     padding: 0;
+    margin: 4px 0;
   }
   .collapsable {
     display: flex;

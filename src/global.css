@@ -17,8 +17,10 @@
     --video-width: 320px;
     --video-height: 180px;
 
-    --success: #13AA13;
-    --error: #a81313;
+    --status-online: #3FA35C;
+    --status-dnd: #E54E4E;
+    --status-focus: #404F92;
+    --status-offline: #53545B;
 }
 
 body {

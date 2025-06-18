@@ -18,6 +18,7 @@
     let channelId = voiceState.roomId;
     let client = useClient();
     let channel = derived(channelId, (id)=>client.channels.get(id ?? ""));
+    let statusDiplay = $state<"border" | "icon">("icon");
 </script>
 
 <div class="userArea">
@@ -44,7 +45,7 @@
     </div>
 
     <div class="userInfo">
-        <Avatar size={40} target={user} />
+        <Avatar size={40} target={user} withBorder={statusDiplay == "border"} withGraphic={statusDiplay == "icon"} />
         <div>
             <Clickable
                 onclick={() => {
