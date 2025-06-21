@@ -15,7 +15,7 @@
     
 </script>
 
-{#if $status == VoiceStatus.CONNECTED}
+{#if $status >= VoiceStatus.RTC_CONNECTING}
     <EndCallAction />
 {:else}
     <IconButton onclick={joinCall}>
