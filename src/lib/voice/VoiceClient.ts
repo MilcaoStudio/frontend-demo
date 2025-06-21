@@ -287,7 +287,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     }
   }
 
-  async join(roomId: string, userId: string) {
+  async join(roomId: string, userId: string, stream?: LocalStream) {
     this.roomId = roomId;
     this.userId = userId;
     this.transports = {
@@ -295,18 +295,21 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       [Role.sub]: new Transport(Role.sub, this.signaling, this.config),
     };
 
-    this.transports[Role.sub].pc.ontrack = (ev: RTCTrackEvent) => {
+    const subscriber = this.transports[Role.sub];
+    const publisher = this.transports[Role.pub];
+
+    subscriber.pc.ontrack = (ev: RTCTrackEvent) => {
       console.debug("Subscriber listening to track", ev.track.id);
       const stream = ev.streams[0];
-      const remote = makeRemote(stream, this.transports![Role.sub]);
+      const remote = makeRemote(stream, subscriber);
       this.addTrack(ev.track, remote);
     };
 
-    this.transports![Role.sub].pc.ondatachannel = (ev: RTCDataChannelEvent) => {
+    subscriber.pc.ondatachannel = (ev: RTCDataChannelEvent) => {
       console.debug("Subscriber data channel", ev.channel.label);
       if (ev.channel.label == API_CHANNEL) {
-        this.transports![Role.sub].api = ev.channel;
-        this.transports![Role.pub].api = ev.channel;
+        subscriber.api = ev.channel;
+        publisher.api = ev.channel;
         ev.channel.onmessage = (e) => {
           try {
             this.handleDataChannelMessage(JSON.parse(e.data));
@@ -323,12 +326,17 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       }
     };
 
-    const offer = await this.transports[Role.pub].pc.createOffer();
-    await this.transports[Role.pub].pc.setLocalDescription(offer);
+    if (stream) {
+      this.publishTrack(stream);
+    } else {
+      this.addParticipant({ id: userId, active: false, audio: false, video: false, streams: [] });
+    }
+
+    const offer = await publisher.pc.createOffer();
+    await publisher.pc.setLocalDescription(offer);
     // Awaits for join signal response
     const answer = await this.signaling.join(roomId, offer);
     await this.handleAnswer(answer.description);
-    this.addParticipant({ id: userId, active: false, streams: [] });
   }
 
   leave() {
@@ -501,7 +509,12 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       streams: [stream],
     };
 
-    this.updateParticipant(this.userId, updated);
+    if (this.participants.has(this.userId)) {
+      this.updateParticipant(this.userId, updated);
+    } else {
+      this.addParticipant({ id: this.userId, ...updated})
+    }
+
     atStream.publish(this.transports[Role.pub]);
   }
 
@@ -529,5 +542,9 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     const updatedUser = { ...user, ...participant };
     this.participants.set(id, updatedUser);
     this.emit("userUpdated", updatedUser);
+  }
+
+  get user() {
+    return this.userId ? this.participants.get(this.userId) : undefined;
   }
 }
