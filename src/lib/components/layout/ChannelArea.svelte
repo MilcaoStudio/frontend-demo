@@ -17,7 +17,7 @@
     .channelArea {
         margin: 8px 0 20px;
         padding: 0 0 16px;
-        flex-grow: 1;
+        min-width: fit-content;
         background: var(--bgHighlight);
         border: 1px solid var(--textMain);
         border-radius: var(--borderRadius);
