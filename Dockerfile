@@ -20,7 +20,7 @@ RUN bun run build
 # copy production code into final image
 FROM base AS release
 COPY --from=prerelease /usr/app/build build
-COPY --from=prerelease /usr/app/node_modules node_modules
+#COPY --from=prerelease /usr/app/node_modules node_modules
 
 # run the app
 ## some node modules are read-protected, root user is needed
