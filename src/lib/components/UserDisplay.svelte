@@ -8,7 +8,7 @@
 </script>
 
 <div class="user-display">
-    <Avatar target={user} size={80} borderColor={speaking ? "var(--success)" : "transparent"} />
+    <Avatar target={user} size={80} withBorder status={speaking ? "online" : "offline"} />
     <P3>{user?.username}</P3>
     {@render children?.()}
 </div>

@@ -1,9 +1,9 @@
 import { fromStore, get, writable, type Writable } from "svelte/store";
 import { LocalStream, type RemoteStream } from "./Stream";
-import type { VoiceUser } from "./Voice";
 import type VoiceClient from "./VoiceClient";
 import { SvelteMap } from "svelte/reactivity";
 import { env } from "$env/dynamic/public";
+import type { VoiceUser } from "./VoiceUser";
 
 export enum VoiceStatus {
   // Default state, no connections
@@ -41,13 +41,12 @@ class VoiceState {
   streams: Map<string, LocalStream> = new SvelteMap();
   roomId: Writable<string | null>;
   participants: Map<string, VoiceUser>;
-  tracks: Map<string, RemoteStream>;
+  //tracks: Map<string, RemoteStream>;
 
   constructor() {
     this.roomId = writable(null);
     this.status = writable(VoiceStatus.UNLOADED);
     this.participants = new SvelteMap();
-    this.tracks = new SvelteMap();
 
     this.syncState = this.syncState.bind(this);
     this.connect = this.connect.bind(this);
@@ -85,6 +84,12 @@ class VoiceState {
       client.on("userLeft", this.syncState);
       client.on("voiceActivityChanged", this.syncState);
       client.on("userUpdated", this.updateParticipant);
+      client.on("error", (err) => {
+        if (get(this.status) > VoiceStatus.RTC_REQUEST) {
+          this.leave();
+        }
+        console.error(err);
+      });
       this.client = client;
     } catch (err) {
       this.status.set(VoiceStatus.UNLOADED);
@@ -146,14 +151,6 @@ class VoiceState {
   leave() {
     this.connecting = false;
     this.client?.leave();
-    this.tracks.clear();
-    // Disconnects devices
-    const local = this.client?.user;
-    if (local) {
-      local.streams.forEach((streams) =>
-        streams.getTracks().forEach((tracks) => tracks.stop())
-      );
-    }
     //get(this.stream)?.getTracks().forEach((track) => track.stop());
     this.status.set(VoiceStatus.READY);
     this.syncState();
@@ -289,10 +286,7 @@ class VoiceState {
       this.screencast.set(true);
       const localUser = this.client?.participants.get(userId);
       localUser &&
-        this.client?.participants.set(userId, {
-          ...localUser,
-          streams: [...localUser.streams, stream],
-        });
+        this.client?.participants.set(userId, localUser.addStream(stream));
       this.client?.publishTrack(stream);
       this.syncState();
     } catch (error) {
@@ -317,7 +311,7 @@ class VoiceState {
   }
 
   updateParticipant(user: VoiceUser) {
-    console.debug("Updating participant", user.id);
+    console.debug("Updating participant", user.id, user.active ? "speaking" : "idle", `[${user.streams.length} stream(s)]`);
     this.participants.set(user.id, user);
   }
 }

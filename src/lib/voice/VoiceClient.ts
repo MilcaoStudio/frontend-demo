@@ -3,7 +3,6 @@ import EventEmitter from "eventemitter3";
 import {
   WSEventType,
   type VoiceError,
-  type VoiceUser,
   Role,
   type Transports,
   type Trickle,
@@ -15,7 +14,8 @@ import {
 } from "./Voice";
 import Signaling from "./Signaling";
 import { LocalStream, makeRemote, type RemoteStream } from "./Stream";
-import { voiceState } from "./VoiceState";
+//import { voiceState } from "./VoiceState";
+import { VoiceUser, type VoiceUserData } from "./VoiceUser";
 
 interface VoiceEvents {
   ready: () => void;
@@ -24,6 +24,7 @@ interface VoiceEvents {
   userLeft: (userId: string) => void;
   roomInfo: () => void;
   voiceActivityChanged: () => void;
+  trackAdded: () => void;
   userUpdated: (user: VoiceUser) => void;
 }
 
@@ -64,8 +65,10 @@ export class Transport {
           }] peer connection disconnected or failed... Restarting ICE`
         );
         if (this.pc.restartIce) {
-          // this will trigger onNegotiationNeeded
+          // 1. Restart ICE
           this.pc.restartIce();
+          // 2. Send offer signal
+          this.signaling.offer
         }
       }
     };
@@ -86,6 +89,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
   roomId?: string;
   participants: Map<string, VoiceUser>;
   signaling: Signaling;
+  tracks: Map<string, { stream: RemoteStream; track: MediaStreamTrack }>;
 
   constructor() {
     super();
@@ -94,6 +98,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     };
     this.signaling = new Signaling();
     this.participants = new Map();
+    this.tracks = new Map();
     this.isDeaf = false;
 
     this.signaling.on(
@@ -154,6 +159,9 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
                 throw new Error(`Invalid produce type ${data.type}`);
             }
             break;
+          }
+          case WSEventType.ServerError: {
+            this.emit("error", new Error(data.error));
           }
           default:
             console.debug(data);
@@ -219,28 +227,40 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
         console.debug("Ignoring this user's tracks");
         return;
       }
+      
+      // At room info received, streams are not yet available
       const streams = tracks
         .map((trackId) => {
-          const stream = voiceState.tracks.get(trackId);
-          if (!stream) {
+          const data = this.tracks.get(trackId);
+          if (!data) {
             console.warn("Stream for %s not found", trackId);
+            return;
           }
-          return stream;
+          return data.stream;
         })
         .filter((stream) => stream != undefined);
-      this.addParticipant({ id: userId, active: false, streams });
+      this.addParticipant(new VoiceUser({ id: userId, tracks, streams }));
     });
     this.emit("roomInfo");
-    console.debug("Initial participants size", this.participants.size);
   }
 
   addTrack(track: MediaStreamTrack, stream: RemoteStream) {
-    voiceState.tracks.set(track.id, stream);
+    const user = this.participants.values().find((u) => u.tracks.has(track.id));
+    if (user) {
+      user.addStream(stream);
+      this.emit("userUpdated", user);
+    } else {
+      console.warn("Found orphan track %s", track.id);
+      this.tracks.set(track.id, { track, stream });
+    }
+    this.emit("trackAdded");
     console.debug(
       "Added track",
       track.id,
       track.kind,
-      track.muted ? "muted" : "active"
+      track.muted ? "muted" : "active",
+      "stream",
+      stream.id
     );
   }
 
@@ -300,9 +320,11 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
 
     subscriber.pc.ontrack = (ev: RTCTrackEvent) => {
       console.debug("Subscriber listening to track", ev.track.id);
-      const stream = ev.streams[0];
-      const remote = makeRemote(stream, subscriber);
-      this.addTrack(ev.track, remote);
+      //const stream = ev.streams[0];
+      for (const stream of ev.streams) {
+        const remote = makeRemote(stream, subscriber);
+        this.addTrack(ev.track, remote);
+      }
     };
 
     subscriber.pc.ondatachannel = (ev: RTCDataChannelEvent) => {
@@ -329,7 +351,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     if (stream) {
       this.publishTrack(stream);
     } else {
-      this.addParticipant({ id: userId, active: false, audio: false, video: false, streams: [] });
+      this.addParticipant(new VoiceUser({ id: userId }));
     }
 
     const offer = await publisher.pc.createOffer();
@@ -342,7 +364,11 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
   leave() {
     if (!this.signaling.connected()) return;
     this.signaling.leave();
+
+    // Disconnects devices
+    this.participants.forEach((u) => u.clearStreams());
     this.participants.clear();
+
     this.roomId = undefined;
     if (this.transports) {
       Object.values(this.transports).forEach((t) => t.pc.close());
@@ -383,6 +409,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
   onUserJoin(event: UserJoinEventData) {
     const userId = event.user_id;
     const roomId = event.room_id;
+    const tracks = event.user_tracks;
     if (userId == this.userId) {
       console.debug("Ignoring self join");
       return;
@@ -394,22 +421,19 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
         this.roomId
       );
     }
-    const streams = event.user_tracks
+    
+    const streams = tracks
       .map((track_id) => {
-        const s = voiceState.tracks.get(track_id);
-        if (!s) {
+        const data = this.tracks.get(track_id);
+        if (!data) {
           console.warn("Stream for %s not found", track_id);
         }
-        return s;
+        return data.stream;
       })
       .filter((stream) => stream != undefined);
-    this.addParticipant({
-      id: userId,
-      active: false,
-      streams,
-      // TODO: add user capabilities in event (audio/video/screencast)
-    });
-    console.debug("UserJoin", userId, streams);
+    // TODO: add user capabilities in event (audio/video/screencast)
+    this.addParticipant(new VoiceUser({ id: userId, tracks, streams }));
+    console.debug("UserJoin", userId, tracks, streams);
   }
 
   onUserLeave(event: UserLeftEventData) {
@@ -431,8 +455,8 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     const streamIds = new Set(data.stream_ids);
     this.participants.forEach((u) => {
       u.active = u.streams.some((s) => streamIds.has(s.id));
+      this.emit("userUpdated", u);
     });
-    this.emit("voiceActivityChanged");
   }
 
   /**
@@ -480,7 +504,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
   stopProduce(stream: LocalStream) {
     if (!this.userId) {
       throw ERR_INVALID_STATE;
-    };
+    }
 
     const user = this.participants.get(this.userId);
     if (user) {
@@ -503,7 +527,6 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
 
     const stream = atStream;
     const updated = {
-      active: false,
       audio: stream.getAudioTracks().length > 0,
       video: stream.getVideoTracks().length > 0,
       streams: [stream],
@@ -512,7 +535,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     if (this.participants.has(this.userId)) {
       this.updateParticipant(this.userId, updated);
     } else {
-      this.addParticipant({ id: this.userId, ...updated})
+      this.addParticipant(new VoiceUser({ id: this.userId, ...updated }));
     }
 
     atStream.publish(this.transports[Role.pub]);
@@ -533,15 +556,15 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     }
   }
 
-  updateParticipant(id: string, participant: Partial<VoiceUser>) {
+  updateParticipant(id: string, data: Partial<VoiceUserData>) {
     const user = this.participants.get(id);
     if (!user) {
       console.warn("User not found", id);
       return;
     }
-    const updatedUser = { ...user, ...participant };
-    this.participants.set(id, updatedUser);
-    this.emit("userUpdated", updatedUser);
+    user.update(data);
+    this.participants.set(id, user);
+    this.emit("userUpdated", user);
   }
 
   get user() {

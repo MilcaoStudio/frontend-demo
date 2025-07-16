@@ -129,6 +129,8 @@ export enum WSEventType {
 
     UserStartProduce = "UserStartProduce",
     UserStopProduce = "UserStopProduce",
+
+    ServerError = "ServerError",
 }
 
 export enum WSCommandType {
@@ -182,15 +184,6 @@ export interface AuthenticationResult {
     user_id: string;
     //partipants: string[];
     ice_servers: RTCIceServer[];
-}
-
-export interface VoiceUser {
-    id: string;
-    audio?: boolean;
-    video?: boolean;
-    screencast?: boolean;
-    active: boolean;
-    streams: MediaStream[];
 }
 
 export type MediaType = "audio" | "video" | "screencast";

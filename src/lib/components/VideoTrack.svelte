@@ -3,7 +3,7 @@
   import Avatar from "./Avatar.svelte";
   import Clickable from "./Clickable.svelte";
   import UserDisplay from "./UserDisplay.svelte";
-  import type { VoiceUser } from "$lib/voice/Voice";
+  import type { VoiceUser } from "$lib/voice/VoiceUser";
 
     let { stream, user, voiceUser }: { stream: MediaStream, user: User | undefined, voiceUser: VoiceUser } = $props();
     let ref: HTMLVideoElement | HTMLAudioElement | undefined = $state();
@@ -18,6 +18,8 @@
       videoTracks = stream.getVideoTracks();
       console.debug(stream);
     }
+
+    $inspect(user);
   </script>
   
   <Clickable {onclick}>
