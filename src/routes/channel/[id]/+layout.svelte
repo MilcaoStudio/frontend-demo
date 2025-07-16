@@ -4,7 +4,7 @@
   import MemberList from "$lib/components/layout/MemberList.svelte";
   import UserArea from "$lib/components/layout/UserArea.svelte";
   import { User } from "uprising.js";
-  import { voiceState } from "$lib/voice/VoiceState";
+  import { voiceState } from "$lib/voice/VoiceState.svelte";
   import { onMount, setContext } from "svelte";
   import { ulid } from "ulid";
   import { StatusMode } from "$lib/uprising.js/API";

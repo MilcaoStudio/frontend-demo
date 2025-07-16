@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { voiceState } from "$lib/voice/VoiceState";
+    import { voiceState } from "$lib/voice/VoiceState.svelte";
     import Icon from "@iconify/svelte";
   import { getContext } from "svelte";
   import type { User } from "uprising.js";

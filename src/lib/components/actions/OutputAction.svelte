@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { voiceState } from "$lib/voice/VoiceState";
+    import { voiceState } from "$lib/voice/VoiceState.svelte";
     import Icon from "@iconify/svelte";
     import { IconButton } from "vermeer-ui";
 

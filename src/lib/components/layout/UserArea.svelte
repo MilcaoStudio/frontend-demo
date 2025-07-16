@@ -4,7 +4,7 @@
     import { User } from "$lib/uprising.js";
     import { P3, P4 } from "vermeer-ui";
     import VideoAction from "../actions/VideoAction.svelte";
-    import { voiceState, VoiceStatus } from "$lib/voice/VoiceState";
+    import { voiceState, VoiceStatus } from "$lib/voice/VoiceState.svelte";
     import MicAction from "../actions/MicAction.svelte";
     import OutputAction from "../actions/OutputAction.svelte";
     import EndCallAction from "../actions/EndCallAction.svelte";

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { getContext } from "svelte";
     import CallAction from "../CallAction.svelte";
-    import { voiceState, VoiceStatus } from "$lib/voice/VoiceState";
+    import { voiceState, VoiceStatus } from "$lib/voice/VoiceState.svelte";
     import VideoUi from "../VideoUI.svelte";
     import { P2, P4 } from "vermeer-ui";
     import ChannelName from "../channel/ChannelName.svelte";

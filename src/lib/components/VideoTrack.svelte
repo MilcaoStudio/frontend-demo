@@ -5,7 +5,7 @@
   import UserDisplay from "./UserDisplay.svelte";
   import type { VoiceUser } from "$lib/voice/VoiceUser";
 
-    let { stream, user, voiceUser }: { stream: MediaStream, user: User | undefined, voiceUser: VoiceUser } = $props();
+    let { stream, user, voiceUser, muted = false }: { stream: MediaStream, user: User | undefined, voiceUser: VoiceUser, muted?: boolean } = $props();
     let ref: HTMLVideoElement | HTMLAudioElement | undefined = $state();
     let videoTracks = $state(stream.getVideoTracks());
   
@@ -18,14 +18,14 @@
       videoTracks = stream.getVideoTracks();
       console.debug(stream);
     }
-
+    
     $inspect(user);
   </script>
   
   <Clickable {onclick}>
     {#if !videoTracks.length}
     <UserDisplay user={user} speaking={voiceUser.active}>
-      <audio autoplay bind:this={ref}></audio>
+      <audio autoplay bind:this={ref} {muted}></audio>
     </UserDisplay>
     {:else}
     <div class="container">
@@ -36,7 +36,7 @@
         </div>
       </div>
         <!-- svelte-ignore a11y_media_has_caption -->
-        <video autoplay bind:this={ref}></video>
+        <video autoplay bind:this={ref} {muted}></video>
     </div>
     {/if}
   </Clickable>
