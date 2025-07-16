@@ -3,7 +3,7 @@ import { LocalStream, type RemoteStream } from "./Stream";
 import type VoiceClient from "./VoiceClient";
 import { SvelteMap } from "svelte/reactivity";
 import { env } from "$env/dynamic/public";
-import type { VoiceUser } from "./VoiceUser";
+import type { VoiceUser } from "./VoiceUser.svelte";
 
 export enum VoiceStatus {
   // Default state, no connections
@@ -40,7 +40,7 @@ class VoiceState {
   stream: Writable<LocalStream> = writable();
   streams: Map<string, LocalStream> = new SvelteMap();
   roomId: Writable<string | null>;
-  participants: Map<string, VoiceUser>;
+  participants: SvelteMap<string, VoiceUser>;
   //tracks: Map<string, RemoteStream>;
 
   constructor() {
@@ -62,7 +62,10 @@ class VoiceState {
     if (!this.client) return;
     this.roomId.set(this.client.roomId ?? null);
     this.participants.clear();
-    this.client.participants.forEach((v, k) => this.participants.set(k, v));
+    this.client.participants.forEach((v, k) => {
+      const value = $state(v);
+      this.participants.set(k, value);
+    });
   }
 
   // This imports and constructs the voice client.
@@ -312,7 +315,11 @@ class VoiceState {
 
   updateParticipant(user: VoiceUser) {
     console.debug("Updating participant", user.id, user.active ? "speaking" : "idle", `[${user.streams.length} stream(s)]`);
-    this.participants.set(user.id, user);
+    const value = $state(user);
+    if (value == this.participants.get(user.id)) {
+      console.warn("No change in participant", user.id);
+    };
+    this.participants.set(user.id, value);
   }
 }
 

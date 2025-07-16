@@ -8,8 +8,6 @@
   import UserDisplay from "./UserDisplay.svelte";
   import { getContext } from "svelte";
 
-  //let stream = voiceState.stream;
-  //let streams = voiceState.streams;
   let participants = voiceState.participants;
   $inspect(participants);
   let me = getContext<User>("user");
@@ -25,14 +23,14 @@
 </script>
 
 <div class="displayContainer">
-  {#each participants.entries() as [id, data] (id)}
-    <div class="row">
-      {#if data.streams.length}
-        {#each data.streams as stream (stream.id)}
-            <VideoTrack stream={stream} user={users.get(id)} voiceUser={data} muted={me.id == id} />
+  {#each participants.values() as user (user.id)}
+    <div class="row {user.active ? 'speaking' : 'idle'}">
+      {#if user.streams.length}
+        {#each user.streams as stream (stream.id)}
+            <VideoTrack stream={stream} user={users.get(user.id)} voiceUser={user} muted={me.id == user.id} />
         {/each}
       {:else}
-        <UserDisplay user={users.get(id)} />
+        <UserDisplay user={users.get(user.id)} />
       {/if}
     </div>
   {/each}

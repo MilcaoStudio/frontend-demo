@@ -3,7 +3,7 @@
   import Avatar from "./Avatar.svelte";
   import Clickable from "./Clickable.svelte";
   import UserDisplay from "./UserDisplay.svelte";
-  import type { VoiceUser } from "$lib/voice/VoiceUser";
+  import type { VoiceUser } from "$lib/voice/VoiceUser.svelte";
 
     let { stream, user, voiceUser, muted = false }: { stream: MediaStream, user: User | undefined, voiceUser: VoiceUser, muted?: boolean } = $props();
     let ref: HTMLVideoElement | HTMLAudioElement | undefined = $state();

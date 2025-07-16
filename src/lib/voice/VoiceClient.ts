@@ -15,7 +15,7 @@ import {
 import Signaling from "./Signaling";
 import { LocalStream, makeRemote, type RemoteStream } from "./Stream";
 //import { voiceState } from "./VoiceState";
-import { VoiceUser, type VoiceUserData } from "./VoiceUser";
+import { VoiceUser, type VoiceUserData } from "./VoiceUser.svelte";
 
 interface VoiceEvents {
   ready: () => void;
@@ -455,8 +455,9 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     const streamIds = new Set(data.stream_ids);
     this.participants.forEach((u) => {
       u.active = u.streams.some((s) => streamIds.has(s.id));
-      this.emit("userUpdated", u);
+      //this.emit("userUpdated", u);
     });
+    console.debug("Participants updated", this.participants);
   }
 
   /**
@@ -562,7 +563,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       console.warn("User not found", id);
       return;
     }
-    user.update(data);
+    user.updateFromPartial(data);
     this.participants.set(id, user);
     this.emit("userUpdated", user);
   }
