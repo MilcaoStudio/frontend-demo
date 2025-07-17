@@ -245,7 +245,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
   }
 
   addTrack(track: MediaStreamTrack, stream: RemoteStream) {
-    const user = this.participants.values().find((u) => u.tracks.has(track.id));
+    const user = Array.from(this.participants.values()).find((u) => u.tracks.has(track.id));
     if (user) {
       user.addStream(stream);
       this.emit("userUpdated", user);
