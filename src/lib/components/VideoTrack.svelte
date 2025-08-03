@@ -1,30 +1,67 @@
 <script lang="ts">
-    import type { User } from "uprising.js";
+  import type { User } from "uprising.js";
   import Avatar from "./Avatar.svelte";
   import Clickable from "./Clickable.svelte";
   import UserDisplay from "./UserDisplay.svelte";
   import type { VoiceUser } from "$lib/voice/VoiceUser.svelte";
-
     let { stream, user, voiceUser, muted = false }: { stream: MediaStream, user: User | undefined, voiceUser: VoiceUser, muted?: boolean } = $props();
     let ref: HTMLVideoElement | HTMLAudioElement | undefined = $state();
     let videoTracks = $state(stream.getVideoTracks());
+    let speaking = $derived(voiceUser.active);
   
+    function unmute() {
+      muted = false;
+    }
+
+    function mute() {
+      muted = true;
+    }
+    
+    function close(this: MediaStreamTrack) {
+      if (!this) {
+        return;
+      }
+
+      if (this.kind == "video") {
+        videoTracks = stream.getVideoTracks().filter(t => t.id == this.id);
+      }
+    }
+    
     $effect(() => {
       videoTracks = stream.getVideoTracks();
       if (ref) ref.srcObject = stream;
     });
+
+    $effect(()=>{
+      stream.getTracks().forEach(t => {
+        t.addEventListener("unmute", unmute);
+        t.addEventListener("mute", mute);
+        t.addEventListener("ended", close);
+      })
+      return ()=>{
+        stream.getTracks().forEach(t => {
+          t.removeEventListener("unmute", unmute);
+          t.removeEventListener("mute", mute);
+          t.removeEventListener("ended", close);
+        })
+      }
+    });
   
     function onclick() {
-      videoTracks = stream.getVideoTracks();
-      console.debug(stream);
+      //videoTracks = stream.getVideoTracks();
+      console.groupCollapsed("on click");
+      if (ref) {
+        console.debug("Media state: Volume %d, %s, %s", ref.volume, ref.muted ? "muted": "not muted", ref.paused ? "paused" : "playing");
+        console.debug("Actual media", ref.srcObject);
+      }
+      console.debug("Video tracks (state)", $state.snapshot(videoTracks));
+      console.groupEnd();
     }
-    
-    $inspect(user);
   </script>
   
   <Clickable {onclick}>
     {#if !videoTracks.length}
-    <UserDisplay user={user} speaking={voiceUser.active}>
+    <UserDisplay user={user} {speaking}>
       <audio autoplay bind:this={ref} {muted}></audio>
     </UserDisplay>
     {:else}
