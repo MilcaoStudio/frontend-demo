@@ -1,16 +1,13 @@
 <script lang="ts">
-  import { voiceState } from "$lib/voice/VoiceState.svelte";
+  import { participants } from "$lib/voice/VoiceState.svelte";
   import MicAction from "./actions/MicAction.svelte";
-  import VideoTrack from "./VideoTrack.svelte";
+
   import { User } from "uprising.js";
   import VideoAction from "./actions/VideoAction.svelte";
   import ScreencastAction from "./actions/ScreencastAction.svelte";
   import UserDisplay from "./UserDisplay.svelte";
-  import { getContext } from "svelte";
-
-  let participants = voiceState.participants;
-  $inspect(participants);
-  let me = getContext<User>("user");
+  import StreamView from "./StreamView.svelte";
+  
   let users = $derived.by(() =>{
     const keys = [...participants.keys()];
     return new Map(
@@ -20,14 +17,16 @@
       ])
     )}
   );
+
+  let values = $derived(Array.from(participants.values()));
 </script>
 
 <div class="displayContainer">
-  {#each participants.values() as user (user.id)}
-    <div class="row {user.active ? 'speaking' : 'idle'}">
-      {#if user.streams.length}
-        {#each user.streams as stream (stream.id)}
-            <VideoTrack stream={stream} user={users.get(user.id)} voiceUser={user} muted={me.id == user.id} />
+  {#each values as user (user.id)}
+    <div class="row">
+      {#if user.streams.size}
+        {#each user.streams.entries() as [index, stream] (stream ? stream.id : index)}
+          <StreamView id={index} user={users.get(user.id)} voiceUser={user} {stream} />
         {/each}
       {:else}
         <UserDisplay user={users.get(user.id)} />

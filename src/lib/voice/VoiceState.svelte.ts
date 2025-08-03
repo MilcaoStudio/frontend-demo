@@ -1,10 +1,12 @@
 import { fromStore, get, writable, type Writable } from "svelte/store";
-import { LocalStream, type RemoteStream } from "./Stream";
+import { LocalStream } from "./Stream";
 import type VoiceClient from "./VoiceClient";
 import { SvelteMap } from "svelte/reactivity";
 import { env } from "$env/dynamic/public";
-import type { VoiceUser } from "./VoiceUser.svelte";
+import { type VoiceUser } from "./VoiceUser.svelte";
+import { StreamKind } from "./LocalVoiceUser.svelte";
 
+export const participants: SvelteMap<string, VoiceUser> = new SvelteMap();
 export enum VoiceStatus {
   // Default state, no connections
   UNLOADED = 0,
@@ -40,13 +42,13 @@ class VoiceState {
   stream: Writable<LocalStream> = writable();
   streams: Map<string, LocalStream> = new SvelteMap();
   roomId: Writable<string | null>;
-  participants: SvelteMap<string, VoiceUser>;
+  //participants: SvelteMap<string, VoiceUser>;
   //tracks: Map<string, RemoteStream>;
 
   constructor() {
     this.roomId = writable(null);
     this.status = writable(VoiceStatus.UNLOADED);
-    this.participants = new SvelteMap();
+    //this.participants = new SvelteMap();
 
     this.syncState = this.syncState.bind(this);
     this.connect = this.connect.bind(this);
@@ -61,10 +63,13 @@ class VoiceState {
   syncState() {
     if (!this.client) return;
     this.roomId.set(this.client.roomId ?? null);
-    this.participants.clear();
     this.client.participants.forEach((v, k) => {
+      if (k == this.client.userId) {
+        return;
+      }
       const value = $state(v);
-      this.participants.set(k, value);
+      //this.participants.set(k, value);
+      participants.set(k, value);
     });
   }
 
@@ -83,9 +88,9 @@ class VoiceState {
 
       // No need to sync state on ready
       //client.on("ready", this.syncState);
-      client.on("roomInfo", this.syncState);
-      client.on("userLeft", this.syncState);
-      client.on("voiceActivityChanged", this.syncState);
+      //client.on("roomInfo", this.syncState);
+      //client.on("userLeft", this.syncState);
+      //client.on("voiceActivityChanged", this.syncState);
       client.on("userUpdated", this.updateParticipant);
       client.on("error", (err) => {
         if (get(this.status) > VoiceStatus.RTC_REQUEST) {
@@ -131,7 +136,7 @@ class VoiceState {
         const stream = await this.requestUserMedia();
         await this.client?.join(roomId, userId, stream);
         this.status.set(VoiceStatus.CONNECTED);
-        this.syncState();
+        this.roomId.set(roomId);
         resolve();
       } catch (error) {
         console.error(error);
@@ -148,7 +153,8 @@ class VoiceState {
 
     this.client?.disconnect();
     this.status.set(VoiceStatus.UNLOADED);
-    this.syncState();
+    this.roomId.set(undefined);
+    participants.clear();
   }
 
   leave() {
@@ -167,15 +173,14 @@ class VoiceState {
     this.audio.set(value);
 
     if (get(this.status) < VoiceStatus.RTC_CONNECTING) {
-      console.warn("Cannot request audio before connecting");
       return;
     }
 
     const user = this.client.user;
 
     try {
-      if (user && user.streams.length) {
-        const stream = user.streams[0] as LocalStream;
+      if (user && user.streams.size) {
+        const stream = user.streams.get(StreamKind.Default);
         value ? await stream.unmute("audio") : stream.mute("audio");
         this.client?.updateParticipant(user.id, {audio: value, streams: [stream]});
       } else if (value) {
@@ -207,10 +212,10 @@ class VoiceState {
     const user = this.client.user;
 
     try {
-      if (user && user.streams.length) {
-        const stream = user.streams[0] as LocalStream;
+      if (user && user.streams.size) {
+        const stream = user.streams[StreamKind.Default] as LocalStream;
         value ? await stream.unmute("video") : stream.mute("video");
-        this.client?.updateParticipant(user.id, {video: value, streams: [stream]});
+        this.client?.updateParticipant(user.id, {video: value});
       } else if (value) {
         const stream = await this.requestUserMedia();
         if (stream) {
@@ -275,7 +280,10 @@ class VoiceState {
     return true;
   }
 
-  async startDisplay(userId: string) {
+  async startDisplay(userId?: string) {
+    if (!this.client) return false;
+    const user = this.client.user;
+
     const constraints = {
       audio: true,
       video: true,
@@ -283,15 +291,33 @@ class VoiceState {
       resolution: fromStore(this.resolution).current,
       codec: "vp8",
     };
+
     try {
+      if (user && user.streams.size > 1) {
+        console.debug("Screencast already active");
+        const displayStream = user.streams[StreamKind.Screencast] as LocalStream;
+        if (displayStream) {
+          await displayStream.unmute("video");
+        }
+        this.client?.updateParticipant(user.id, {screencast: true });
+        return true;
+      }
       const stream = await LocalStream.getDisplayMedia(constraints);
-      this.streams.set("display", stream);
+      if (!stream) {
+        console.warn("Failed to request video");
+        this.screencast.set(false);
+        return false;
+      }
+
+      stream.getTracks().forEach((track) => {
+        track.addEventListener("ended", () => {
+          this.stopDisplay();
+        });
+      });
+
+      console.debug("Publishing display stream");
+      this.client.publishTrack(stream, true);
       this.screencast.set(true);
-      const localUser = this.client?.participants.get(userId);
-      localUser &&
-        this.client?.participants.set(userId, localUser.addStream(stream));
-      this.client?.publishTrack(stream);
-      this.syncState();
     } catch (error) {
       console.error(error);
       return false;
@@ -299,12 +325,24 @@ class VoiceState {
     return true;
   }
 
+  /**
+   * Stops screencasting. Deletes and unpublishes any local screencast stream.
+   * This function will shorten the user streams list, because the screencast stream is an extra stream.
+   */
   async stopDisplay() {
-    const stream = this.streams.get("display");
-    if (!stream) return false;
+    if (!this.client) return false;
+    const user = this.client.user;
     try {
-      stream.unpublish();
-      stream.getTracks().forEach((track) => track.stop());
+      if (user && user.streams.size > 1) {
+        const displayStream = user.streams.get(StreamKind.Screencast) as LocalStream;
+        console.debug(user.streams);
+        if (displayStream) {
+          displayStream.unpublish("all");
+          console.debug("Display stream unpublished");
+          displayStream.getTracks().forEach((track) => track.stop());
+          console.debug("Display stream stopped");
+        }
+      }
       this.screencast.set(false);
     } catch (error) {
       console.error(error);
@@ -314,12 +352,9 @@ class VoiceState {
   }
 
   updateParticipant(user: VoiceUser) {
-    console.debug("Updating participant", user.id, user.active ? "speaking" : "idle", `[${user.streams.length} stream(s)]`);
     const value = $state(user);
-    if (value == this.participants.get(user.id)) {
-      console.warn("No change in participant", user.id);
-    };
-    this.participants.set(user.id, value);
+    participants.set(user.id, value);
+    console.debug("Updated participant", value.id, value.active ? "speaking" : "idle", `[${value.streams.size} stream(s)]`);
   }
 }
 
