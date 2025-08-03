@@ -4,52 +4,59 @@
   import Clickable from "./Clickable.svelte";
   import UserDisplay from "./UserDisplay.svelte";
   import type { VoiceUser } from "$lib/voice/VoiceUser.svelte";
+    import { voiceState } from "$lib/voice/VoiceState.svelte";
     let { stream, user, voiceUser, muted = false }: { stream: MediaStream, user: User | undefined, voiceUser: VoiceUser, muted?: boolean } = $props();
     let ref: HTMLVideoElement | HTMLAudioElement | undefined = $state();
     let videoTracks = $state(stream.getVideoTracks());
     let speaking = $derived(voiceUser.active);
-  
-    function unmute() {
-      muted = false;
+
+    function addTrack(this: MediaStream, ev: MediaStreamTrackEvent) {
+      console.debug("Track added", ev.track.id);
+      videoTracks = this.getVideoTracks();
+      $inspect(videoTracks);
     }
 
-    function mute() {
-      muted = true;
-    }
+    voiceState.video.subscribe(video => {
+      if (video) {
+        videoTracks = stream.getVideoTracks();
+      } else {
+        videoTracks = stream.getVideoTracks().filter(t => t.readyState != "ended");
+      }
+    });
     
     function close(this: MediaStreamTrack) {
       if (!this) {
         return;
       }
-
-      if (this.kind == "video") {
-        videoTracks = stream.getVideoTracks().filter(t => t.id == this.id);
-      }
+      videoTracks = stream.getVideoTracks().filter(t => t.readyState != "ended");
     }
     
     $effect(() => {
-      videoTracks = stream.getVideoTracks();
       if (ref) ref.srcObject = stream;
+    });
+
+    $effect(() => {
+      stream.addEventListener("addtrack", addTrack);
+
+      return () => {
+        stream.removeEventListener("addtrack", addTrack);
+      }
     });
 
     $effect(()=>{
       stream.getTracks().forEach(t => {
-        t.addEventListener("unmute", unmute);
-        t.addEventListener("mute", mute);
         t.addEventListener("ended", close);
-      })
+      });
       return ()=>{
         stream.getTracks().forEach(t => {
-          t.removeEventListener("unmute", unmute);
-          t.removeEventListener("mute", mute);
           t.removeEventListener("ended", close);
         })
       }
     });
   
     function onclick() {
-      //videoTracks = stream.getVideoTracks();
       console.groupCollapsed("on click");
+      videoTracks = stream.getVideoTracks().filter(t => t.readyState != "ended");
       if (ref) {
         console.debug("Media state: Volume %d, %s, %s", ref.volume, ref.muted ? "muted": "not muted", ref.paused ? "paused" : "playing");
         console.debug("Actual media", ref.srcObject);
