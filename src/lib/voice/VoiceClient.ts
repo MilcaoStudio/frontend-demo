@@ -6,11 +6,12 @@ import {
   Role,
   type Transports,
   type Trickle,
-  type UserJoinEventData,
-  type UserLeftEventData,
+  type UserJoinedData,
+  type UserLeftData,
   type RoomInfo,
-  type VoiceActivityEventData,
+  type VoiceActivityData,
   type AuthenticationResult,
+  type TrackAddedData,
 } from "./Voice";
 import Signaling from "./Signaling";
 import { LocalStream, makeRemote, type RemoteStream } from "./Stream";
@@ -314,10 +315,12 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
         break;
       case "UserLeft":
         this.onUserLeave(data);
-        this.emit("userLeft", data.user_id);
         break;
       case "VoiceActivity":
         this.onVoiceActivity(data);
+        break;
+      case "TrackAdded":
+        this.onTrackAdded(data);
         break;
       default:
         console.debug("Unknown message type", msg.type);
@@ -428,13 +431,24 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     }
   }
 
-  onUserJoin(event: UserJoinEventData) {
+  onUserJoin(event: UserJoinedData) {
     console.debug(event);
-    console.warn("UserJoined Not implemented")
+    const roomId = event.room_id;
+    if (this.roomId != roomId) {
+      console.warn(
+        "UserLeave event received for different room",
+        roomId,
+        this.roomId
+      );
+    }
+    const id = event.uid;
+
     // TODO: add user capabilities in event (audio/video/screencast)
+    const user = new VoiceUser({ id })
+    this.addParticipant(user);
   }
 
-  onUserLeave(event: UserLeftEventData) {
+  onUserLeave(event: UserLeftData) {
     const userId = event.user_id;
     const roomId = event.room_id;
     if (this.roomId != roomId) {
@@ -445,15 +459,39 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
       );
     }
     this.participants.delete(userId);
+    this.emit("userLeft", userId);
     console.debug("%s removed from participants", userId);
   }
 
-  onVoiceActivity(data: VoiceActivityEventData) {
+  onVoiceActivity(data: VoiceActivityData) {
     console.debug("VoiceActivity", data);
     const streamIds = new Set(data.stream_ids);
     this.participants.forEach((u) => {
       u.active = Array.from(u.streams.values()).some(s => streamIds.has(s.id));
     });
+  }
+
+  onTrackAdded(data: TrackAddedData) {
+    console.debug("TrackAdded", data);
+    const uid = data.uid;
+
+    if (this.userId == uid) {
+      console.debug("Skip this user");
+      return;
+    }
+    const user = this.participants.get(uid);
+    if (!user) {
+      console.warn("onTrackAdded > User %s not found");
+      return;
+    }
+    const trackId = data.track;
+    const pending = this.pendingTracks.get(trackId);
+    if (pending) {
+      const { track, stream } = pending;
+      this.linkTrack(track, stream, user);
+      this.pendingTracks.delete(trackId);
+    }
+    this.tracks.set(trackId, { user, streamId: data.stream.id });
   }
 
   /**

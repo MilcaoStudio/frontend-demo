@@ -120,8 +120,9 @@ export type Transports<T extends string | symbol | number, U> = {
 export enum WSEventType {
     Accept = "Accept",
     Answer = "Answer",
-    UserJoin = "UserJoin",
+    UserJoined = "UserJoined",
     UserLeft = "UserLeft",
+    TrackAdded = "TrackAdded",
 
     Offer = "Offer",
     RoomInfo = "RoomInfo",
@@ -200,17 +201,23 @@ export type RoomInfo = {
     }
 }
 
-export type VoiceActivityEventData = {
+export type VoiceActivityData = {
     stream_ids: MediaStream["id"][];
 }
 
-export type UserJoinEventData = {
-    user_id: string
+export type UserJoinedData = {
+    uid: string
     room_id: string
-    user_tracks: string[]
 }
 
-export type UserLeftEventData = {
+export type UserLeftData = {
     room_id: string
     user_id: string
+}
+
+export type TrackAddedData = {
+    room_id: string,
+    uid: string
+    track: string,
+    stream: StreamInfo,
 }
