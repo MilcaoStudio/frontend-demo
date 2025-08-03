@@ -89,9 +89,9 @@ class VoiceState {
       // No need to sync state on ready
       //client.on("ready", this.syncState);
       //client.on("roomInfo", this.syncState);
-      //client.on("userLeft", this.syncState);
+      client.on("userLeft", deleteParticipant);
       //client.on("voiceActivityChanged", this.syncState);
-      client.on("userUpdated", this.updateParticipant);
+      client.on("userUpdated", updateParticipant);
       client.on("error", (err) => {
         if (get(this.status) > VoiceStatus.RTC_REQUEST) {
           this.leave();
@@ -170,9 +170,8 @@ class VoiceState {
       return;
     }
 
-    this.audio.set(value);
-
     if (get(this.status) < VoiceStatus.RTC_CONNECTING) {
+      this.audio.set(value);
       return;
     }
 
@@ -190,8 +189,10 @@ class VoiceState {
         } else {
           console.warn("Failed to request audio");
           this.audio.set(false);
+          return;
         }
       }
+      this.audio.set(value);
     } catch (error) {
       console.error(error);
     }
@@ -202,10 +203,8 @@ class VoiceState {
       return;
     }
 
-    this.video.set(value);
-
     if (get(this.status) < VoiceStatus.RTC_CONNECTING) {
-      console.warn("Cannot request video before connecting");
+      this.video.set(value);
       return;
     }
 
@@ -213,7 +212,7 @@ class VoiceState {
 
     try {
       if (user && user.streams.size) {
-        const stream = user.streams[StreamKind.Default] as LocalStream;
+        const stream = user.streams.get(StreamKind.Default);
         value ? await stream.unmute("video") : stream.mute("video");
         this.client?.updateParticipant(user.id, {video: value});
       } else if (value) {
@@ -223,8 +222,10 @@ class VoiceState {
         } else {
           console.warn("Failed to request video");
           this.video.set(false);
+          return;
         }
       }
+      this.video.set(value);
     } catch (error) {
       console.error(error);
     }
@@ -350,12 +351,19 @@ class VoiceState {
     }
     return true;
   }
+}
 
-  updateParticipant(user: VoiceUser) {
-    const value = $state(user);
-    participants.set(user.id, value);
-    console.debug("Updated participant", value.id, value.active ? "speaking" : "idle", `[${value.streams.size} stream(s)]`);
+export function deleteParticipant(id: string) {
+  const deleted = participants.delete(id);
+  if (deleted) {
+    console.debug("Deleted participant %s", id);
   }
+}
+
+export function updateParticipant(user: VoiceUser) {
+  const value = $state(user);
+  participants.set(user.id, value);
+  console.debug("Updated participant", value.id, value.active ? "speaking" : "idle", `[${value.streams.size} stream(s)]`);
 }
 
 export const voiceState = new VoiceState();
