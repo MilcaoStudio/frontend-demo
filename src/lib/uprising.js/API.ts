@@ -17,3 +17,11 @@ export enum StatusMode {
     DND = "dnd",
     OFFLINE = "offline",
 }
+
+export interface Channel {
+    id: string
+    name: string
+    type: "text" | "voice" | "dm"
+    server: string
+    description: string | null
+}

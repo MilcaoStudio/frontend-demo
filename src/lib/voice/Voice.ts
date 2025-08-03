@@ -120,14 +120,18 @@ export type Transports<T extends string | symbol | number, U> = {
 export enum WSEventType {
     Accept = "Accept",
     Answer = "Answer",
-    UserJoin = "UserJoin",
+    UserJoined = "UserJoined",
     UserLeft = "UserLeft",
+    TrackAdded = "TrackAdded",
 
     Offer = "Offer",
+    RoomInfo = "RoomInfo",
     Trickle = "Trickle",
 
     UserStartProduce = "UserStartProduce",
     UserStopProduce = "UserStopProduce",
+
+    ServerError = "ServerError",
 }
 
 export enum WSCommandType {
@@ -178,12 +182,42 @@ export interface VoiceError {
 }
 
 export interface AuthenticationResult {
-    userId: string;
-    partipants: string[];
-}
-
-export interface VoiceUser {
-    audio?: boolean;
+    user_id: string;
+    //partipants: string[];
+    ice_servers: RTCIceServer[];
 }
 
 export type MediaType = "audio" | "video" | "screencast";
+
+export type StreamInfo = {
+    id: string;
+    tracks: MediaStreamTrack["id"][];
+    simulcast: boolean;
+}
+export type RoomInfo = {
+    room: {
+        id: string;
+        users: Record<string, StreamInfo[]>;
+    }
+}
+
+export type VoiceActivityData = {
+    stream_ids: MediaStream["id"][];
+}
+
+export type UserJoinedData = {
+    uid: string
+    room_id: string
+}
+
+export type UserLeftData = {
+    room_id: string
+    user_id: string
+}
+
+export type TrackAddedData = {
+    room_id: string,
+    uid: string
+    track: string,
+    stream: StreamInfo,
+}

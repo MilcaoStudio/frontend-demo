@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Channel } from "$lib";
+    import type { Channel } from "uprising.js";
     import ChannelName from "./ChannelName.svelte";
 
     let { channel }: { channel: Channel } = $props();

@@ -241,12 +241,39 @@ export class LocalStream extends MediaStream {
     this.getTracks().forEach(this.publishTrack.bind(this));
   }
 
-  unpublish() {
+  /**
+   * Removes all senders with tracks of provided kind from the peer connection.
+   * @param kind
+   * "audio": Unpublish only audio tracks (not recommended)
+   * 
+   * "video": Unpublish only video tracks
+   * 
+   * "all": Unpublish all tracks (ideal for shutdown screenshare)
+   */
+  unpublish(kind: "audio" | "video" | "all") {
     if (this.pc) {
-      const tracks = this.getTracks();
-      this.pc.getSenders().forEach((s: RTCRtpSender) => {
-        if (s.track && tracks.includes(s.track)) {
-          this.pc!.removeTrack(s);
+      let tracks: MediaStreamTrack[] = [];
+      switch(kind) {
+        case "audio": 
+          //tracks = this.getAudioTracks();
+          // FIXME: Removing audio tracks produce connectivity issues
+          tracks = [];
+          break;
+        case "video":
+          tracks = this.getVideoTracks();
+          break;
+        case "all":
+          tracks = this.getTracks();
+          break;
+        default:
+          throw new TypeError("Expected kind to be either 'audio' | 'video' | 'all'");
+      }
+      this.pc.getTransceivers().forEach((transceiver: RTCRtpTransceiver)=> {
+        const sender = transceiver.sender;
+        if (tracks.some(t => t.id == sender.track.id)) {
+          // Delete transceiver to send BYE
+          transceiver.stop();
+          console.debug("Transceiver (mid %s) stopped", transceiver.mid);
         }
       });
     }
@@ -272,6 +299,11 @@ export class LocalStream extends MediaStream {
     this.updateTrack(next, prev);
   }
 
+  /**
+   * Mutes a video track or an audio track.
+   * If `sendEmptyOnMute` was enabled in this constraints, the actual track is replaced by an empty track.
+   * Otherwise, the track is removed from this peer connection and stopped.
+   */
   mute(kind: 'audio' | 'video') {
     const track = this.getTrack(kind);
     if (track && this.constraints.sendEmptyOnMute) {
@@ -284,6 +316,7 @@ export class LocalStream extends MediaStream {
       return;
     }
     if (track) {
+      this.unpublish(kind);
       track.stop();
     }
   }

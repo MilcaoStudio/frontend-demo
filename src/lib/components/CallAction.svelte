@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { voiceState, VoiceStatus } from "$lib/voice/VoiceState";
+    import { voiceState, VoiceStatus } from "$lib/voice/VoiceState.svelte";
     import Icon from "@iconify/svelte";
     import { IconButton, P2 } from "vermeer-ui";
     import EndCallAction from "./actions/EndCallAction.svelte";
@@ -15,7 +15,7 @@
     
 </script>
 
-{#if $status == VoiceStatus.CONNECTED}
+{#if $status >= VoiceStatus.RTC_CONNECTING}
     <EndCallAction />
 {:else}
     <IconButton onclick={joinCall}>

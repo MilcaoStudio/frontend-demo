@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Channel } from "$lib";
+  import type { Channel } from "uprising.js";
     import ChannelHeader from "./ChannelHeader.svelte";
 
     let { channel }: { channel: Channel } = $props();
@@ -17,6 +17,7 @@
     .channelArea {
         margin: 8px 0 20px;
         padding: 0 0 16px;
+        min-width: fit-content;
         flex-grow: 1;
         background: var(--bgHighlight);
         border: 1px solid var(--textMain);

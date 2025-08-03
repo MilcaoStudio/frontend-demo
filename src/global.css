@@ -1,5 +1,6 @@
 :root {
-    --borderRadius: 3px;
+    --borderRadius: 6px !important;
+    --borderRadiusOuter: 8px;
     --borderRadiusUser: 16px;
     --padding-s: 6px;
     --padding-m: 8px;
@@ -12,8 +13,20 @@
     --textMain: #B8C3FF;
     --textDim: #888AA4;
     --colorPrimary: #404F92;
+
+    --video-width: 320px;
+    --video-height: 180px;
+
+    --status-online: #3FA35C;
+    --status-dnd: #E54E4E;
+    --status-focus: #404F92;
+    --status-offline: #53545B;
 }
 
 body {
+    margin: 0;
+}
+
+p {
     margin: 0;
 }

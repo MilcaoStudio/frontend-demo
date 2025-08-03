@@ -13,18 +13,26 @@ interface SignalingEvents {
     error: (event: Event) => void;
     data: (data: any) => void;
 
-    negociate: (data: any) => void;
+    negotiate: (role: "pub" | "sub") => void;
     trickle: (data: any) => void;
 }
+export type SignalingOptions = Partial<{
+    subRetries: number;
+    pubRetries: number;
+}>
 
 export default class Signaling extends EventEmitter<SignalingEvents> {
     ws?: WebSocket;
     peer?: RTCPeerConnection;
     index: number;
     pending: Map<number, (data: unknown) => void>;
+    maxSubRetries: number;
+    maxPubRetries: number;
 
-    constructor() {
+    constructor(options: SignalingOptions = {}) {
         super();
+        this.maxSubRetries = options.subRetries ?? 3;
+        this.maxPubRetries = options.pubRetries ?? 3;
         this.index = 0;
         this.pending = new Map();
     }
@@ -75,10 +83,11 @@ export default class Signaling extends EventEmitter<SignalingEvents> {
         const json = JSON.parse(event.data);
         const id = json.id;
         if (!id) {
+            //console.debug("S->C", event.data);
             this.emit("data", json);
             return;
         }
-        console.debug("Received:", id, event.data);
+        //console.debug("S->C", id, event.data);
         const entry = this.pending.get(id);
         if (!entry) {
             this.emit("data", json);
@@ -105,7 +114,7 @@ export default class Signaling extends EventEmitter<SignalingEvents> {
     }
 
     send(type: string, data?: any) {
-        console.debug({type, ...data});
+        //console.debug({type, ...data});
         this.ws?.send(`${JSON.stringify({type, ...data})}\n`);
     }
 
@@ -144,7 +153,7 @@ export default class Signaling extends EventEmitter<SignalingEvents> {
                 type,
                 ...data,
             };
-            console.debug(json);
+            console.debug("C->S", json);
             ws.send(`${JSON.stringify(json)}\n`);
         });
     }
