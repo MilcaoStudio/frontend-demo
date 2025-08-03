@@ -188,10 +188,15 @@ export interface AuthenticationResult {
 
 export type MediaType = "audio" | "video" | "screencast";
 
+export type StreamInfo = {
+    id: string;
+    tracks: MediaStreamTrack["id"][];
+    simulcast: boolean;
+}
 export type RoomInfo = {
     room: {
         id: string;
-        users: Record<string, MediaStreamTrack["id"][]>;
+        users: Record<string, StreamInfo[]>;
     }
 }
 
