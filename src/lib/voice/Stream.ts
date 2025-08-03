@@ -244,18 +244,20 @@ export class LocalStream extends MediaStream {
   /**
    * Removes all senders with tracks of provided kind from the peer connection.
    * @param kind
-   * "audio": Unpublish only audio tracks
+   * "audio": Unpublish only audio tracks (not recommended)
    * 
    * "video": Unpublish only video tracks
    * 
-   * "all": Unpublish all tracks
+   * "all": Unpublish all tracks (ideal for shutdown screenshare)
    */
   unpublish(kind: "audio" | "video" | "all") {
     if (this.pc) {
       let tracks: MediaStreamTrack[] = [];
       switch(kind) {
         case "audio": 
-          tracks = this.getAudioTracks();
+          //tracks = this.getAudioTracks();
+          // FIXME: Removing audio tracks produce connectivity issues
+          tracks = [];
           break;
         case "video":
           tracks = this.getVideoTracks();
