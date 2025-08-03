@@ -23,6 +23,7 @@
       .loadVoice()
       .then(() => voiceState.connect(userId))
       .catch((err) => console.error(err));
+    return voiceState.disconnect; // bound function
   });
 </script>
 
