@@ -5,6 +5,7 @@ import {
     WSCommandType,
     WSErrorCode,
     type Trickle,
+    WSCloseCode,
 } from "./Voice";
 
 interface SignalingEvents {
@@ -37,7 +38,7 @@ export default class Signaling extends EventEmitter<SignalingEvents> {
         this.pending = new Map();
     }
 
-    connected(): boolean {
+    get connected() {
         return (
             this.ws != undefined &&
             this.ws.readyState < WebSocket.CLOSING
@@ -68,14 +69,18 @@ export default class Signaling extends EventEmitter<SignalingEvents> {
         });
     }
 
-    disconnect() {
+    /** Close peer connections and closes socket
+     * @param away - Socket is going away (e.g. layout dismount, before page reload).
+     */
+    disconnect(away = false) {
         this.peer?.close();
-        if (
-            this.ws != undefined &&
-            this.ws.readyState != WebSocket.CLOSED &&
-            this.ws.readyState != WebSocket.CLOSING
-        )
-            this.ws.close(1000);
+        if (this.connected) {
+            if (away) {
+                this.ws.close(WSCloseCode.GoingAway);
+            } else {
+                this.ws.close(1000);
+            }
+        }
     }
 
     private parseData(event: MessageEvent) {
@@ -114,6 +119,10 @@ export default class Signaling extends EventEmitter<SignalingEvents> {
     }
 
     send(type: string, data?: any) {
+        if (!this.connected) {
+            console.warn("Socket not connected");
+            return;
+        }
         //console.debug({type, ...data});
         this.ws?.send(`${JSON.stringify({type, ...data})}\n`);
     }

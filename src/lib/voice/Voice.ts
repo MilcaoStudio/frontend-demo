@@ -168,12 +168,14 @@ export enum WSErrorCode {
 
 export enum WSCloseCode {
     // Sent when the received data is not a string, or is unparseable
+    GoingAway = 1001,
     InvalidData = 1003,
-    Unauthorized = 4001,
-    RoomClosed = 4004,
     // Sent when a client tries to send an opcode in the wrong state
     InvalidState = 1002,
     ServerError = 1011,
+    
+    Unauthorized = 4001,
+    RoomClosed = 4004,
 }
 
 export interface VoiceError {

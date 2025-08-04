@@ -19,14 +19,52 @@ import { LocalStream, makeRemote, type RemoteStream } from "./Stream";
 import { VoiceUser, type VoiceUserData } from "./VoiceUser.svelte";
 import { LocalVoiceUser } from "./LocalVoiceUser.svelte";
 
+/**
+ * Events emitted by the VoiceClient for signaling and WebRTC state changes.
+ */
 interface VoiceEvents {
+  /**
+   * Emitted when the client successfully authenticates and is ready to participate in the voice session.
+   */
   ready: () => void;
+
+  /**
+   * Emitted when a WebSocket or signaling error occurs.
+   * This does not necessarily mean the connection is closed.
+   */
   error: (error: Error) => void;
+
+  /**
+   * Emitted when the WebSocket connection is closed.
+   * This can happen due to network issues, server shutdown, or intentional disconnect.
+   * If an error caused the closure, it will be provided.
+   */
   close: (error?: VoiceError) => void;
+
+  /**
+   * Emitted when another user leaves the voice room.
+   */
   userLeft: (userId: string) => void;
+
+  /**
+   * Emitted when updated information about the voice room is received.
+   */
   roomInfo: () => void;
-  voiceActivityChanged: () => void;
-  trackAdded: () => void;
+
+  /**
+   * Emitted when a user's voice activity state changes (speaking / not speaking).
+   */
+  voiceActivityChanged: (userId: string, speaking: boolean) => void;
+
+  /**
+   * Emitted when a new audio track is added for a user (e.g. they unmuted).
+   */
+  trackAdded: (userId: string, track: MediaStreamTrack) => void;
+
+  /**
+   * Emitted when a user's state changes (e.g. streams updated, active state).
+   * Provides the updated user object.
+   */
   userUpdated: (user: VoiceUser) => void;
 }
 
@@ -185,8 +223,9 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
 
     this.signaling.on(
       "close",
-      (error: { code: any; reason: string }) => {
-        this.signaling.disconnect();
+      ({ code, reason }) => {
+        console.debug("Signaling connection closed");
+        this.emit("close", {error: code, message: reason});
       },
       this
     );
@@ -387,7 +426,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
   }
 
   leave() {
-    if (!this.signaling.connected() || !this.roomId) return;
+    if (!this.signaling.connected || !this.roomId) return;
     this.signaling.leave();
 
     // Disconnects devices
@@ -401,12 +440,11 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     }
   }
 
-  disconnect(error?: VoiceError, ignoreDisconnected?: boolean) {
-    if (!this.signaling.connected() && !ignoreDisconnected) return;
+  disconnect(ignoreDisconnected?: boolean) {
+    if (!this.signaling.connected && !ignoreDisconnected) return;
     this.leave();
     this.userId = undefined;
-    
-    this.emit("close", error);
+    this.signaling.disconnect(true);
   }
 
   /**
@@ -467,7 +505,15 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
     console.debug("VoiceActivity", data);
     const streamIds = new Set(data.stream_ids);
     this.participants.forEach((u) => {
-      u.active = Array.from(u.streams.values()).some(s => streamIds.has(s.id));
+      const streams = Array.from(u.streams.values());
+      let active = false;
+      if (streams.length) {
+        active = streams.some(s => streamIds.has(s.id));
+      }
+      if (u.active != active) {
+        u.active = active;
+        this.emit("voiceActivityChanged", u.id, active);
+      }
     });
   }
 
