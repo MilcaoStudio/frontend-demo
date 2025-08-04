@@ -59,7 +59,7 @@ interface VoiceEvents {
   /**
    * Emitted when a new audio track is added for a user (e.g. they unmuted).
    */
-  trackAdded: (userId: string, track: MediaStreamTrack) => void;
+  trackAdded: () => void;
 
   /**
    * Emitted when a user's state changes (e.g. streams updated, active state).
