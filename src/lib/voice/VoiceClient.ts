@@ -158,6 +158,17 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
             }
             break;
           }
+          case WSEventType.Hello: {
+            if (data.heartbeat_interval) {
+              const sendPing = () => {
+                if (this.signaling.connected) {
+                    this.signaling.ping();
+                    setTimeout(sendPing, data.heartbeat_interval);
+                }
+              }
+              sendPing();
+            }
+          }
           case WSEventType.Offer: {
             if (data.description) {
               this.negotiate(data.description);
@@ -253,6 +264,7 @@ export default class VoiceClient extends EventEmitter<VoiceEvents> {
         },
       ];
     }
+    
     console.debug("Config loaded", this.config);
     this.emit("ready");
   }

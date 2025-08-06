@@ -120,6 +120,7 @@ export type Transports<T extends string | symbol | number, U> = {
 export enum WSEventType {
     Accept = "Accept",
     Answer = "Answer",
+    Hello = "Hello",
     UserJoined = "UserJoined",
     UserLeft = "UserLeft",
     TrackAdded = "TrackAdded",
@@ -139,6 +140,7 @@ export enum WSCommandType {
     Answer = "Answer",
     Join = "Join",
     Offer = "Offer",
+    Ping = "Ping",
     Trickle = "Trickle",
     Leave = "Leave",
 
@@ -187,6 +189,7 @@ export interface AuthenticationResult {
     user_id: string;
     //partipants: string[];
     ice_servers: RTCIceServer[];
+    ice_transport_policy: RTCIceTransportPolicy;
 }
 
 export type MediaType = "audio" | "video" | "screencast";

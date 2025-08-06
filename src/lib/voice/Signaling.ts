@@ -118,6 +118,10 @@ export default class Signaling extends EventEmitter<SignalingEvents> {
         return this.sendRequest(WSCommandType.Offer, {description})
     }
 
+    ping() {
+        this.send(WSCommandType.Ping, { data: Date.now() });
+    }
+
     send(type: string, data?: any) {
         if (!this.connected) {
             console.warn("Socket not connected");
